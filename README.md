@@ -20,8 +20,7 @@ Eine schlanke Webapp, die aktive Brände aus den Satellitendaten von **NASA FIRM
 
 1. MAP_KEY kostenlos anfordern: <https://firms.modaps.eosdis.nasa.gov/api/map_key/> — es genügt eine E-Mail-Adresse, kein Earthdata-Konto.
 2. In Netlify unter **Project configuration → Environment variables** die Variable `NASA_FIRMS_MAP_KEY` anlegen und auf den Scope **Functions** beschränken.
-3. Optional einen kostenlosen, domaingebundenen [CARTO Basemap API-Key](https://carto.com/basemaps/apikey/) anfordern. Ohne diesen verwendet die App automatisch einen OpenStreetMap-Fallback.
-4. Lokal mit `npx netlify dev` starten oder das Repository über Netlify deployen.
+3. Lokal mit `npx netlify dev` starten oder das Repository über Netlify deployen.
 
 Lokal ausführen:
 
@@ -51,13 +50,11 @@ FIRMS meldet thermische Anomalien, keine Waldbrände. In Mitteleuropa stammt ein
 
 Der FIRMS MAP_KEY wird ausschließlich als Netlify Environment Variable gespeichert und serverseitig von der Function gelesen. Er erscheint weder im Repository noch im Browser. Die Function validiert die Parameter, begrenzt Anfragen pro IP und nutzt CDN-Caching, um das NASA-Kontingent zu schützen.
 
-Der CARTO-Key wird ebenfalls nicht im Quellcode hinterlegt. CARTO-Basemap-Keys sind für Client-Anwendungen vorgesehen, sollten aber auf die verwendete Domain beschränkt und nicht zwischen unabhängigen Projekten geteilt werden.
-
 ## Datenquellen
 
 - Branddaten: [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) (LANCE / EOSDIS), VIIRS und MODIS
 - Wetter: [OpenWeatherMap](https://openweathermap.org/) (optional)
-- Kartenhintergrund: © OpenStreetMap-Mitwirkende, © CARTO; Satellitenbild: Esri, Maxar, Earthstar Geographics
+- Kartenhintergrund: © OpenStreetMap-Mitwirkende; Satellitenbild: Esri, Maxar, Earthstar Geographics
 - Kartenbibliothek: [Leaflet](https://leafletjs.com/)
 
 ## Lizenz

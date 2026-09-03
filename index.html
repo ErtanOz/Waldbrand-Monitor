@@ -95,7 +95,7 @@
 
   .hint{font-size:11.5px;color:var(--muted);margin:8px 0 0}
   .hint a{color:var(--ember-1)}
-  .fallback-dark{filter:grayscale(1) invert(1) brightness(.64) contrast(1.3)}
+  .osm-dark{filter:grayscale(1) invert(1) brightness(.64) contrast(1.3)}
 
   /* ---------- stats ---------- */
   .stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden}
@@ -242,15 +242,6 @@
       </section>
 
       <section class="block">
-        <h2>Kartenhintergrund <span id="cartoState" class="thresh" aria-live="polite">OSM-Fallback</span></h2>
-        <label class="field">
-          <span>CARTO Basemap API-Key</span>
-          <input type="password" id="cartoKey" placeholder="für CARTO Dark Matter" autocomplete="off" spellcheck="false">
-        </label>
-        <p class="hint">Ohne CARTO-Key wird automatisch OpenStreetMap verwendet. Kostenlosen, domaingebundenen Key bei <a href="https://carto.com/basemaps/apikey/" target="_blank" rel="noopener">CARTO anfordern</a>. Der Key bleibt lokal in diesem Browser.</p>
-      </section>
-
-      <section class="block">
         <h2>Lage <span id="obstime" class="thresh"></span></h2>
         <div class="stats">
           <div class="stat"><b id="s-count">–</b><small>Detektionen</small></div>
@@ -330,41 +321,18 @@ var map = L.map('map',{zoomControl:true, preferCanvas:true, worldCopyJump:true})
             .setView([39.0,35.2], 6);
 
 var osmAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>-Mitwirkende';
-var cartoAttribution = osmAttribution + ', &copy; <a href="https://carto.com/attributions">CARTO</a>';
 var dark = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:19, attribution:osmAttribution, className:'fallback-dark'
+  maxZoom:19, attribution:osmAttribution, className:'osm-dark'
 }).addTo(map);
 var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
   maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'
 });
-var labels = null;
-var darkModeActive = true;
-
-function cartoLayer(style, key, options){
-  return L.tileLayer('https://{s}.basemaps.cartocdn.com/' + style + '/{z}/{x}/{y}{r}.png?key=' + encodeURIComponent(key),
-    Object.assign({subdomains:'abcd', maxZoom:20, attribution:cartoAttribution}, options || {}));
-}
-function configureBasemap(key){
-  key = (key || '').trim();
-  if(map.hasLayer(dark)) map.removeLayer(dark);
-  if(labels && map.hasLayer(labels)) map.removeLayer(labels);
-  dark = key
-    ? cartoLayer('dark_all', key)
-    : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
-        maxZoom:19, attribution:osmAttribution, className:'fallback-dark'
-      });
-  labels = key ? cartoLayer('dark_only_labels', key, {opacity:.8}) : null;
-  document.getElementById('cartoState').textContent = key ? 'CARTO konfiguriert' : 'OSM-Fallback';
-  if(darkModeActive) dark.addTo(map);
-  else if(labels) labels.addTo(map);
-}
 
 document.getElementById('bm-dark').onclick = function(){ swapBase(true); };
 document.getElementById('bm-sat').onclick  = function(){ swapBase(false); };
 function swapBase(isDark){
-  darkModeActive = isDark;
-  if(isDark){ map.removeLayer(sat); if(labels) map.removeLayer(labels); dark.addTo(map); }
-  else { map.removeLayer(dark); sat.addTo(map); if(labels) labels.addTo(map); }
+  if(isDark){ map.removeLayer(sat); dark.addTo(map); }
+  else { map.removeLayer(dark); sat.addTo(map); }
   document.getElementById('bm-dark').setAttribute('aria-pressed', String(isDark));
   document.getElementById('bm-sat').setAttribute('aria-pressed', String(!isDark));
 }
@@ -420,16 +388,8 @@ function recall(k,cb){
     if(v) cb(v);
   }catch(e){}
 }
-var cartoInput = document.getElementById('cartoKey');
 var owmInput   = document.getElementById('owmKey');
-recall('carto_basemap_key', function(v){ cartoInput.value = v; configureBasemap(v); });
 recall('owm_key', function(v){ owmInput.value = v; });
-cartoInput.addEventListener('change', function(){
-  var key = cartoInput.value.trim();
-  store('carto_basemap_key', key);
-  configureBasemap(key);
-  toast(key ? 'CARTO-Basiskarte konfiguriert.' : 'CARTO-Key entfernt — OpenStreetMap-Fallback aktiv.');
-});
 owmInput.addEventListener('change', function(){ store('owm_key', owmInput.value.trim()); });
 
 /* -------------------------------------------------------------- Utils */
