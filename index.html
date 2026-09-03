@@ -29,13 +29,31 @@
   html,body{height:100%;margin:0}
   body{
     background:var(--ink);color:var(--text);font-family:var(--sans);
-    font-size:14px;line-height:1.45;overflow:hidden;
+    font-size:14px;line-height:1.45;overflow:hidden;position:relative;
+  }
+  /* ambient ember glow behind the whole app for atmosphere */
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background:
+      radial-gradient(1200px 700px at 12% -12%, rgba(244,129,63,.11), transparent 60%),
+      radial-gradient(900px 620px at 112% 8%, rgba(226,62,46,.09), transparent 55%);
   }
   button,input,select{font-family:inherit;font-size:inherit;color:inherit}
   :focus-visible{outline:2px solid var(--ember-1);outline-offset:2px}
+  ::selection{background:rgba(244,129,63,.35);color:var(--ember-core)}
+
+  /* ---------- top loading indicator ---------- */
+  .loadbar{position:fixed;top:0;left:0;width:100%;height:3px;z-index:9999;background:transparent;pointer-events:none}
+  .loadbar::before{
+    content:'';display:block;height:100%;width:30%;
+    background:linear-gradient(90deg,transparent,var(--ember-1),var(--ember-2),var(--ember-3),transparent);
+    opacity:0;transform:translateX(-100%);
+  }
+  .loadbar.active::before{opacity:1;animation:loadsweep 1.1s ease-in-out infinite}
+  @keyframes loadsweep{0%{transform:translateX(-100%)}100%{transform:translateX(340%)}}
 
   /* ---------- shell ---------- */
-  .shell{display:grid;grid-template-columns:376px 1fr;height:100dvh}
+  .shell{display:grid;grid-template-columns:376px 1fr;height:100dvh;position:relative;z-index:1}
   .rail{
     background:var(--panel);border-right:1px solid var(--line);
     display:flex;flex-direction:column;min-height:0;
@@ -44,52 +62,83 @@
   #map{position:absolute;inset:0;background:#0A0F18}
 
   /* ---------- header ---------- */
-  .brand{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+  .brand{padding:18px 20px 16px;border-bottom:1px solid var(--line)}
+  .brandline{display:flex;align-items:center;gap:9px}
+  .flame-mark{width:22px;height:22px;flex:none;color:var(--ember-2);filter:drop-shadow(0 0 7px rgba(244,129,63,.55))}
   .brand h1{
     font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;
     margin:0;line-height:1;
+    background:linear-gradient(135deg,var(--text) 45%,var(--ember-1) 130%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
   }
   .brand h1 span{color:var(--ember-2)}
-  .brand p{margin:6px 0 0;color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+  .status-chip{
+    margin:11px 0 0;display:inline-flex;align-items:center;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:20px;
+    padding:5px 11px 5px 9px;font-size:11.5px;color:var(--muted);
+  }
   .livedot{
     display:inline-block;width:7px;height:7px;border-radius:50%;
-    background:var(--ember-3);margin-right:7px;vertical-align:middle;
+    background:var(--ember-3);margin-right:7px;vertical-align:middle;flex:none;
   }
   .livedot.on{animation:breathe 2.4s ease-in-out infinite}
   @keyframes breathe{0%,100%{opacity:.35;box-shadow:0 0 0 0 rgba(226,62,46,.5)}50%{opacity:1;box-shadow:0 0 0 5px rgba(226,62,46,0)}}
 
   /* ---------- scroll body ---------- */
-  .rail-body{overflow-y:auto;padding:16px 20px 24px;flex:1;min-height:0;scrollbar-width:thin}
+  .rail-body{
+    overflow-y:auto;padding:16px 18px 24px;flex:1;min-height:0;scrollbar-width:thin;
+    -webkit-mask-image:linear-gradient(to bottom,transparent,#000 14px,#000 calc(100% - 14px),transparent);
+    mask-image:linear-gradient(to bottom,transparent,#000 14px,#000 calc(100% - 14px),transparent);
+  }
   .rail-body::-webkit-scrollbar{width:8px}
   .rail-body::-webkit-scrollbar-thumb{background:var(--panel-2);border-radius:8px}
+  .rail-body::-webkit-scrollbar-thumb:hover{background:var(--ember-2)}
 
-  .block{margin-bottom:22px}
-  .block > h2{
-    font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.14em;
-    text-transform:uppercase;color:var(--muted);margin:0 0 10px;
-    display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+  .block{
+    margin-bottom:14px;background:rgba(255,255,255,.015);
+    border:1px solid var(--line);border-radius:13px;padding:14px 14px 16px;
   }
+  .block > h2{
+    font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 12px;
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+  }
+  .block > h2 .htitle{display:inline-flex;align-items:center;gap:7px}
+  .block > h2 svg{width:14px;height:14px;color:var(--ember-2);flex:none}
   label.field{display:block;margin-bottom:10px}
   label.field > span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
   input[type=text],input[type=password],input[type=date],select{
     width:100%;background:var(--panel-2);border:1px solid var(--line);
     border-radius:7px;padding:9px 10px;font-family:var(--mono);font-size:12.5px;
+    transition:border-color .15s,box-shadow .15s;
   }
+  select:hover,input:hover{border-color:rgba(232,237,245,.24)}
+  select:focus-visible,input:focus-visible{border-color:var(--ember-2);box-shadow:0 0 0 3px rgba(244,129,63,.18)}
   input::placeholder{color:#5C6C82}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
   .btn{
-    background:var(--panel-2);border:1px solid var(--line);border-radius:7px;
-    padding:9px 12px;cursor:pointer;font-weight:500;transition:border-color .15s,background .15s;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:8px;
+    padding:9px 12px;cursor:pointer;font-weight:500;
+    transition:border-color .15s,background .15s,transform .1s;
   }
   .btn:hover{border-color:rgba(232,237,245,.3)}
+  .btn:active{transform:scale(.96)}
   .btn.primary{
+    position:relative;overflow:hidden;
     background:linear-gradient(180deg,var(--ember-2),var(--ember-3));
-    border-color:transparent;color:#1B0E08;font-weight:600;
+    border-color:transparent;color:#1B0E08;font-weight:700;
+    box-shadow:0 4px 14px rgba(226,62,46,.25);
   }
-  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.primary:hover{filter:brightness(1.08);box-shadow:0 6px 20px rgba(226,62,46,.35)}
+  .btn.primary::after{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(115deg,transparent 42%,rgba(255,255,255,.35) 50%,transparent 58%);
+    transform:translateX(-130%);
+  }
+  .btn.primary:hover::after{transform:translateX(130%);transition:transform .65s ease}
   .btn.wide{width:100%}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
   .btn-row{display:flex;gap:8px;margin-top:4px}
   .btn-row .btn{flex:1}
 
@@ -98,100 +147,183 @@
   .osm-dark{filter:grayscale(1) invert(1) brightness(.64) contrast(1.3)}
 
   /* ---------- stats ---------- */
-  .stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden}
-  .stat{background:var(--panel);padding:11px 12px}
-  .stat b{display:block;font-family:var(--display);font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .stat{background:var(--panel);padding:11px 12px;transition:background .2s}
+  .stat b{
+    display:block;font-family:var(--display);font-size:22px;font-weight:700;
+    letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums;
+  }
   .stat small{color:var(--muted);font-size:11px;font-family:var(--mono);letter-spacing:.04em}
   .split{display:flex;gap:8px;margin-top:8px}
   .split div{
-    flex:1;border:1px solid var(--line);border-radius:8px;padding:8px 10px;
+    flex:1;border:1px solid var(--line);border-radius:9px;padding:8px 10px;
     display:flex;align-items:baseline;justify-content:space-between;cursor:pointer;
+    transition:border-color .15s,transform .1s,background .15s;
   }
-  .split div:hover{border-color:rgba(232,237,245,.3)}
-  .split .flag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted)}
-  .split .val{font-family:var(--display);font-weight:700;font-size:17px}
+  .split div:hover{border-color:rgba(232,237,245,.3);background:rgba(255,255,255,.02)}
+  .split div:active{transform:scale(.98)}
+  .split .flag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted);display:inline-flex;align-items:center;gap:5px}
+  .split .val{font-family:var(--display);font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
 
   /* ---------- signature: FRP-Spektrum ---------- */
-  .spectrum{border:1px solid var(--line);border-radius:9px;padding:12px 12px 8px;background:var(--panel-2)}
+  .spectrum{border:1px solid var(--line);border-radius:10px;padding:12px 12px 10px;background:var(--panel-2)}
   #hist{display:block;width:100%;height:64px}
   .spectrum .scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px}
-  input[type=range]{width:100%;margin:10px 0 0;accent-color:var(--ember-2);background:transparent}
+  .range-wrap{position:relative;margin-top:16px}
+  .range-bubble{
+    position:absolute;bottom:100%;transform:translateX(-50%);margin-bottom:9px;
+    background:var(--ink);border:1px solid var(--line);border-radius:6px;
+    padding:3px 8px;font-family:var(--mono);font-size:11px;color:var(--ember-1);
+    white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;
+  }
+  .range-bubble::after{
+    content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+    border:5px solid transparent;border-top-color:var(--ink);
+  }
+  .range-bubble.show{opacity:1}
+  input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:4px;margin:0;
+    background:linear-gradient(90deg,var(--ember-1),var(--ember-2),var(--ember-3));
+    border-radius:3px;cursor:pointer;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+    background:var(--ember-core);border:2px solid var(--ember-2);
+    box-shadow:0 0 0 4px rgba(244,129,63,.18);cursor:grab;
+    transition:box-shadow .15s,transform .15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+  input[type=range]::-webkit-slider-thumb:active{cursor:grabbing;box-shadow:0 0 0 6px rgba(244,129,63,.28)}
+  input[type=range]::-moz-range-thumb{
+    width:15px;height:15px;border-radius:50%;background:var(--ember-core);
+    border:2px solid var(--ember-2);box-shadow:0 0 0 4px rgba(244,129,63,.18);cursor:grab;
+  }
+  input[type=range]::-moz-range-track{background:transparent;border:0}
   .thresh{font-family:var(--mono);font-size:12px;color:var(--ember-1)}
 
   /* ---------- clusters ---------- */
-  ol.clusters{list-style:none;margin:0;padding:0;counter-reset:c}
+  ol.clusters{list-style:none;margin:0;padding:0}
   ol.clusters li{
-    border-bottom:1px solid var(--line);padding:9px 2px;cursor:pointer;
-    display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;
-    border-radius:6px;
+    border-bottom:1px solid var(--line);padding:10px 8px;cursor:pointer;
+    display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;align-items:center;
+    border-radius:8px;border-left:3px solid transparent;
+    animation:clEnter .4s cubic-bezier(.2,.8,.2,1) both;
   }
-  ol.clusters li:hover,ol.clusters li:focus-visible{background:rgba(244,129,63,.07)}
+  @keyframes clEnter{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  ol.clusters li:hover,ol.clusters li:focus-visible{background:rgba(244,129,63,.08)}
   ol.clusters li:last-child{border-bottom:none}
-  .cl-name{font-weight:600}
-  .cl-sub{grid-column:1;font-family:var(--mono);font-size:11px;color:var(--muted)}
-  .cl-frp{grid-row:1/3;font-family:var(--mono);font-size:13px;text-align:right;color:var(--ember-1)}
+  .cl-rank{
+    grid-row:1/3;width:22px;height:22px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--panel-2);color:var(--muted);
+    font-family:var(--mono);font-size:11px;font-weight:700;
+  }
+  .cl-name{grid-column:2;font-weight:600}
+  .cl-sub{grid-column:2;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .cl-frp{grid-row:1/3;font-family:var(--mono);font-size:13px;text-align:right;color:var(--ember-1);white-space:nowrap}
   .empty{color:var(--muted);font-size:12.5px;padding:6px 0}
 
   /* ---------- legend + map overlays ---------- */
   .legend{
-    position:absolute;left:14px;bottom:22px;z-index:500;background:rgba(19,28,43,.92);
-    border:1px solid var(--line);border-radius:9px;padding:10px 12px;backdrop-filter:blur(6px);
+    position:absolute;left:14px;bottom:22px;z-index:500;background:rgba(19,28,43,.88);
+    border:1px solid var(--line);border-radius:10px;padding:10px 12px;backdrop-filter:blur(8px);
+    box-shadow:0 10px 26px rgba(0,0,0,.35);
   }
   .legend b{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
   .ramp{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:7px 0 5px;width:190px}
   .ramp i{flex:1}
   .legend .scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--muted)}
+
   .toast{
     position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:600;
     background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--ember-2);
-    padding:10px 14px;border-radius:8px;max-width:min(560px,86vw);font-size:13px;
-    box-shadow:0 10px 30px rgba(0,0,0,.45);display:none;
+    padding:10px 14px;border-radius:10px;max-width:min(560px,86vw);font-size:13px;
+    box-shadow:0 14px 34px rgba(0,0,0,.45);display:none;overflow:hidden;
   }
-  .toast.show{display:flex;align-items:flex-start;gap:10px}
+  .toast.show{display:flex;align-items:flex-start;gap:9px;animation:toastIn .25s cubic-bezier(.2,.8,.2,1)}
+  @keyframes toastIn{from{opacity:0;transform:translate(-50%,-8px)}to{opacity:1;transform:translate(-50%,0)}}
   .toast.err{border-left-color:var(--ember-3)}
-  .toast span{flex:1}
+  .toast-icon{flex:none;font-size:14px;line-height:1.35;color:var(--ember-1)}
+  .toast.err .toast-icon{color:var(--ember-3)}
+  .toast span#toast-text{flex:1}
   .toast button{
     background:none;border:0;color:var(--muted);cursor:pointer;
     font-size:16px;line-height:1;padding:0 2px;flex:none;
   }
   .toast button:hover{color:var(--text)}
+  .toast-progress{
+    position:absolute;left:0;bottom:0;height:2px;width:100%;
+    background:linear-gradient(90deg,var(--ember-1),var(--ember-2));
+    transform-origin:left;
+  }
   .sr-only{
     position:absolute;width:1px;height:1px;padding:0;margin:-1px;
     overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
   }
   .stale .livedot{background:var(--muted)}
-  .basemap-switch{
-    position:absolute;right:12px;top:12px;z-index:500;display:flex;gap:1px;
-    background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;
+
+  .basemap-switch,.region-switch{
+    position:absolute;z-index:500;display:flex;padding:3px;gap:0;
+    background:rgba(19,28,43,.8);backdrop-filter:blur(8px);
+    border:1px solid var(--line);border-radius:10px;
   }
-  .basemap-switch button{background:var(--panel);border:0;padding:7px 11px;font-size:12px;cursor:pointer}
-  .basemap-switch button[aria-pressed=true]{background:var(--ember-2);color:#1B0E08;font-weight:600}
-  .region-switch{
-    position:absolute;left:60px;top:12px;z-index:500;display:flex;gap:1px;
-    background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;
+  .basemap-switch{right:12px;top:12px}
+  .region-switch{left:60px;top:12px}
+  .basemap-switch .pill,.region-switch .pill{
+    position:absolute;top:3px;left:3px;bottom:3px;
+    background:linear-gradient(180deg,var(--ember-2),var(--ember-3));
+    border-radius:7px;transition:transform .28s cubic-bezier(.4,0,.2,1),width .28s;z-index:0;
   }
-  .region-switch button{background:var(--panel);border:0;padding:7px 12px;font-size:12px;cursor:pointer;font-family:var(--mono);letter-spacing:.06em}
-  .region-switch button:hover{background:var(--panel-2)}
+  .basemap-switch button,.region-switch button{
+    position:relative;z-index:1;background:transparent;border:0;
+    padding:7px 12px;font-size:12px;cursor:pointer;color:var(--text);
+    transition:color .2s;
+  }
+  .region-switch button{font-family:var(--mono);letter-spacing:.06em}
+  .basemap-switch button[aria-pressed=true],.region-switch button[aria-pressed=true]{color:#1B0E08;font-weight:700}
 
   /* ---------- leaflet skin ---------- */
   .leaflet-container{background:#0A0F18;font-family:var(--sans)}
-  .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border-radius:10px;border:1px solid var(--line)}
+  .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border-radius:12px;border:1px solid var(--line);box-shadow:0 16px 36px rgba(0,0,0,.5)}
   .leaflet-popup-tip{background:var(--panel)}
   .leaflet-popup-content{margin:12px 14px;font-size:13px;min-width:210px}
   .leaflet-control-zoom a{background:var(--panel);color:var(--text);border-color:var(--line)}
   .leaflet-control-zoom a:hover{background:var(--panel-2)}
   .leaflet-control-attribution{background:rgba(11,18,32,.8);color:var(--muted)}
   .leaflet-control-attribution a{color:var(--muted)}
+  .leaflet-div-icon{background:transparent;border:0}
+  .pulse-icon{position:relative;width:28px;height:28px}
+  .pulse-ring{
+    position:absolute;left:50%;top:50%;width:14px;height:14px;
+    transform:translate(-50%,-50%) scale(.5);border-radius:50%;
+    background:radial-gradient(circle,rgba(255,209,102,.55),rgba(226,62,46,0) 70%);
+    animation:pulseRing 2.4s ease-out infinite;
+  }
+  .pulse-ring.d2{animation-delay:1.2s}
+  @keyframes pulseRing{0%{transform:translate(-50%,-50%) scale(.5);opacity:.85}100%{transform:translate(-50%,-50%) scale(3.1);opacity:0}}
+
   .pop-title{font-family:var(--display);font-weight:700;font-size:16px;margin-bottom:2px}
+  .pop-bar{height:4px;border-radius:2px;background:rgba(255,255,255,.09);overflow:hidden;margin-top:7px}
+  .pop-bar i{display:block;height:100%;border-radius:2px}
   .pop-grid{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-family:var(--mono);font-size:11.5px;margin-top:8px}
   .pop-grid span:nth-child(odd){color:var(--muted)}
   .pop-wx{margin-top:9px;border-top:1px solid var(--line);padding-top:8px;font-family:var(--mono);font-size:11.5px}
-  .pop-btn{margin-top:9px;width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:6px;cursor:pointer;font-size:12px}
+  .pop-btn{
+    margin-top:9px;width:100%;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:7px;padding:7px;cursor:pointer;font-size:12px;transition:background .15s,transform .1s;
+  }
+  .pop-btn:hover{background:rgba(244,129,63,.15);border-color:rgba(244,129,63,.4)}
+  .pop-btn:active{transform:scale(.97)}
 
   @media (max-width:860px){
     .shell{grid-template-columns:1fr;grid-template-rows:52vh 48vh}
     .stage{order:-1}
-    .brand{padding:12px 16px 10px}
+    .rail{position:relative}
+    .rail::before{
+      content:'';position:absolute;top:7px;left:50%;transform:translateX(-50%);
+      width:36px;height:4px;border-radius:2px;background:var(--line);z-index:2;
+    }
+    .brand{padding:14px 16px 10px}
     .brand h1{font-size:21px}
     .rail-body{padding:12px 16px 20px}
     .legend{display:none}
@@ -200,17 +332,21 @@
 </style>
 </head>
 <body>
+<div class="loadbar" id="loadbar" aria-hidden="true"></div>
 <div class="shell">
   <aside class="rail">
     <div class="brand">
-      <h1>ATEŞ<span>.</span></h1>
-      <p role="status" aria-live="polite"><span class="livedot" id="livedot"></span><span id="statusline">Bereit — geschützter NASA-Zugang</span></p>
+      <div class="brandline">
+        <svg class="flame-mark" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2c1.2 3.4-3 4.6-3 8.4a3 3 0 0 0 6 0c0-1.1-.5-2.1-1-3 2.3 1.3 4.3 3.9 4.3 7.1a6.3 6.3 0 1 1-12.6 0c0-4.6 3.4-8 6.3-12.5z"/></svg>
+        <h1>ATEŞ<span>.</span></h1>
+      </div>
+      <p class="status-chip" role="status" aria-live="polite"><span class="livedot" id="livedot"></span><span id="statusline">Bereit — geschützter NASA-Zugang</span></p>
     </div>
 
     <div class="rail-body">
 
       <section class="block">
-        <h2>Datenquelle</h2>
+        <h2><span class="htitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>Datenquelle</span></h2>
         <p class="hint" style="margin:0 0 12px">NASA FIRMS wird sicher über die Netlify Function geladen. Der API-Key bleibt auf dem Server.</p>
         <div class="row">
           <label class="field">
@@ -255,7 +391,7 @@
       </section>
 
       <section class="block">
-        <h2>Lage <span id="obstime" class="thresh"></span></h2>
+        <h2><span class="htitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg>Lage</span> <span id="obstime" class="thresh"></span></h2>
         <div class="stats">
           <div class="stat"><b id="s-count">–</b><small>Detektionen</small></div>
           <div class="stat"><b id="s-high">–</b><small>hohe Konfidenz</small></div>
@@ -263,33 +399,36 @@
           <div class="stat"><b id="s-sum">–</b><small>Σ FRP (MW)</small></div>
         </div>
         <div class="split" id="split">
-          <div data-region="DE" role="button" tabindex="0" title="Karte auf Deutschland zoomen"><span class="flag">DEUTSCHLAND</span><span class="val" id="s-de">–</span></div>
-          <div data-region="TR" role="button" tabindex="0" title="Karte auf Türkiye zoomen"><span class="flag">TÜRKİYE</span><span class="val" id="s-tr">–</span></div>
+          <div data-region="DE" role="button" tabindex="0" title="Karte auf Deutschland zoomen"><span class="flag">🇩🇪 DEUTSCHLAND</span><span class="val" id="s-de">–</span></div>
+          <div data-region="TR" role="button" tabindex="0" title="Karte auf Türkiye zoomen"><span class="flag">🇹🇷 TÜRKİYE</span><span class="val" id="s-tr">–</span></div>
         </div>
       </section>
 
       <section class="block">
-        <h2>FRP-Spektrum <span class="thresh" id="threshLabel">ab 0 MW</span></h2>
+        <h2><span class="htitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V12"/><path d="M12 20V4"/><path d="M20 20v-7"/></svg>FRP-Spektrum</span> <span class="thresh" id="threshLabel">ab 0 MW</span></h2>
         <div class="spectrum">
           <canvas id="hist" width="640" height="128" aria-label="Verteilung der Strahlungsleistung"></canvas>
           <div class="scale"><span>schwach</span><span>Feuerintensität (log)</span><span>stark</span></div>
-          <input type="range" id="thresh" min="0" max="100" value="0" aria-label="Mindest-FRP" aria-valuetext="ab 0 MW">
+          <div class="range-wrap">
+            <div class="range-bubble" id="threshBubble">ab 0 MW</div>
+            <input type="range" id="thresh" min="0" max="100" value="0" aria-label="Mindest-FRP" aria-valuetext="ab 0 MW">
+          </div>
         </div>
         <p class="hint">Filtert schwache Signale (Industrie, Gasfackeln, Brandrodung) aus der Karte. <span id="filteredOut"></span></p>
       </section>
 
       <section class="block">
-        <h2>Hotspot-Cluster</h2>
+        <h2><span class="htitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="9" r="2.5"/><path d="M12 21s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z"/></svg>Hotspot-Cluster</span></h2>
         <ol class="clusters" id="clusters"><li class="empty">Noch keine Daten geladen.</li></ol>
       </section>
 
       <section class="block">
-        <h2>Wetterkontext <span class="thresh">Netlify · Open-Meteo</span></h2>
+        <h2><span class="htitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a4 4 0 1 1 .7-7.94A5.5 5.5 0 0 1 18 9.5 4 4 0 0 1 17 18H7z"/></svg>Wetterkontext</span> <span class="thresh">Netlify · Open-Meteo</span></h2>
         <p class="hint" style="margin-top:0">Ohne API-Key: Im Popup lassen sich Temperatur, Luftfeuchte, Niederschlag und Wind am Brandort abrufen.</p>
       </section>
 
       <section class="block">
-        <h2>Export</h2>
+        <h2><span class="htitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v11"/><path d="M8 10l4 4 4-4"/><path d="M4 21h16"/></svg>Export</span></h2>
         <div class="btn-row">
           <button class="btn" id="expGeo">GeoJSON</button>
           <button class="btn" id="expCsv">CSV</button>
@@ -303,9 +442,9 @@
   <main class="stage">
     <div id="map"></div>
     <div class="region-switch" role="group" aria-label="Kartenausschnitt wechseln">
-      <button id="go-de">DE</button>
-      <button id="go-tr">TR</button>
-      <button id="go-both">BEIDE</button>
+      <button id="go-de" aria-pressed="false">DE</button>
+      <button id="go-tr" aria-pressed="false">TR</button>
+      <button id="go-both" aria-pressed="true">BEIDE</button>
     </div>
     <div class="basemap-switch" role="group" aria-label="Kartenhintergrund">
       <button id="bm-dark" aria-pressed="true">Karte</button>
@@ -317,8 +456,10 @@
       <div class="scale"><span>&lt;5</span><span>20</span><span>50</span><span>100</span><span>MW+</span></div>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite">
+      <span class="toast-icon" id="toast-icon" aria-hidden="true">ℹ</span>
       <span id="toast-text"></span>
       <button type="button" id="toast-close" aria-label="Meldung schließen">×</button>
+      <div class="toast-progress" id="toastProgress"></div>
     </div>
   </main>
 </div>
@@ -327,6 +468,9 @@
 <script>
 (function(){
 "use strict";
+
+var reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+var loadbarEl = document.getElementById('loadbar');
 
 /* ---------------------------------------------------------------- Karte */
 var map = L.map('map',{zoomControl:true, preferCanvas:true, worldCopyJump:true})
@@ -340,6 +484,24 @@ var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Worl
   maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'
 });
 
+/* Segmented pill controls: eine gleitende Markierung statt Einzel-Hintergründen. */
+function initPill(container){
+  var pill = document.createElement('span');
+  pill.className = 'pill';
+  container.insertBefore(pill, container.firstChild);
+  function move(){
+    var btn = container.querySelector('button[aria-pressed="true"]');
+    if(!btn) return;
+    pill.style.width = btn.offsetWidth + 'px';
+    pill.style.transform = 'translateX(' + btn.offsetLeft + 'px)';
+  }
+  addEventListener('resize', move);
+  requestAnimationFrame(move);
+  return move;
+}
+var moveBasemapPill = initPill(document.querySelector('.basemap-switch'));
+var moveRegionPill  = initPill(document.querySelector('.region-switch'));
+
 document.getElementById('bm-dark').onclick = function(){ swapBase(true); save(); };
 document.getElementById('bm-sat').onclick  = function(){ swapBase(false); save(); };
 function swapBase(isDark){
@@ -347,9 +509,11 @@ function swapBase(isDark){
   else { map.removeLayer(dark); sat.addTo(map); }
   document.getElementById('bm-dark').setAttribute('aria-pressed', String(isDark));
   document.getElementById('bm-sat').setAttribute('aria-pressed', String(!isDark));
+  moveBasemapPill();
 }
 
 var fireLayer = L.layerGroup().addTo(map);
+var pulseLayer = L.layerGroup().addTo(map);
 
 /* ------------------------------------------------------------- Zustand */
 var ALL = [];        // alle geladenen Detektionen
@@ -378,23 +542,48 @@ var VIEWS = {
   both: [[35.7,5.7],[55.2,44.9]]
 };
 function goTo(k){ map.fitBounds(VIEWS[k], {padding:[20,20]}); }
-document.getElementById('go-de').onclick   = function(){ goTo('de'); };
-document.getElementById('go-tr').onclick   = function(){ goTo('tr'); };
-document.getElementById('go-both').onclick = function(){ goTo('both'); };
+function setRegionActive(id){
+  ['go-de','go-tr','go-both'].forEach(function(b){
+    document.getElementById(b).setAttribute('aria-pressed', String(b === id));
+  });
+  moveRegionPill();
+}
+document.getElementById('go-de').onclick   = function(){ goTo('de'); setRegionActive('go-de'); };
+document.getElementById('go-tr').onclick   = function(){ goTo('tr'); setRegionActive('go-tr'); };
+document.getElementById('go-both').onclick = function(){ goTo('both'); setRegionActive('go-both'); };
 goTo('both');
 
 /* -------------------------------------------------------------- Utils */
 var toastEl = document.getElementById('toast');
+var toastProgress = document.getElementById('toastProgress');
+var toastAnim = null;
 function toast(msg, isError){
   document.getElementById('toast-text').textContent = msg;
+  document.getElementById('toast-icon').textContent = isError ? '⚠' : 'ℹ';
   toastEl.classList.toggle('err', !!isError);
   toastEl.classList.add('show');
-  clearTimeout(toastEl._h);
-  // Fehler bleiben länger stehen, damit sie in Ruhe gelesen werden können.
-  toastEl._h = setTimeout(hideToast, isError ? 12000 : 7000);
+  if(toastAnim) toastAnim.cancel();
+  var duration = isError ? 12000 : 7000;   // Fehler bleiben länger stehen
+  if(toastProgress.animate){
+    toastAnim = toastProgress.animate(
+      [{transform:'scaleX(1)'},{transform:'scaleX(0)'}],
+      {duration:duration, easing:'linear', fill:'forwards'}
+    );
+    toastAnim.onfinish = hideToast;
+  } else {
+    toastAnim = null;
+    clearTimeout(toastEl._h);
+    toastEl._h = setTimeout(hideToast, duration);
+  }
 }
-function hideToast(){ clearTimeout(toastEl._h); toastEl.classList.remove('show'); }
+function hideToast(){
+  if(toastAnim){ toastAnim.cancel(); toastAnim = null; }
+  clearTimeout(toastEl._h);
+  toastEl.classList.remove('show');
+}
 document.getElementById('toast-close').onclick = hideToast;
+toastEl.addEventListener('mouseenter', function(){ if(toastAnim) toastAnim.pause(); });
+toastEl.addEventListener('mouseleave', function(){ if(toastAnim) toastAnim.play(); });
 document.addEventListener('keydown', function(e){ if(e.key === 'Escape') hideToast(); });
 
 function status(txt, live){
@@ -408,6 +597,22 @@ function relTime(ms){
   var h = Math.floor(min/60);
   if(h < 24) return 'vor ' + h + ' h';
   return 'vor ' + Math.floor(h/24) + ' Tagen';
+}
+/* Zahlen zählen sanft zum neuen Wert hoch statt hart umzuspringen. */
+function animateNumber(el, value){
+  var text = value == null ? '–' : value.toLocaleString('de-DE');
+  if(reduceMotion || value == null){ cancelAnimationFrame(el._raf); el.textContent = text; return; }
+  var from = parseInt((el.textContent||'0').replace(/\D/g,''), 10); if(!isFinite(from)) from = 0;
+  var to = value, start = performance.now(), dur = 450;
+  cancelAnimationFrame(el._raf);
+  function step(now){
+    var p = Math.min(1, (now - start) / dur);
+    var eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (to - from) * eased).toLocaleString('de-DE');
+    if(p < 1) el._raf = requestAnimationFrame(step);
+    else el.textContent = text;
+  }
+  el._raf = requestAnimationFrame(step);
 }
 function num(v){ var n = parseFloat(v); return isFinite(n) ? n : 0; }
 
@@ -541,6 +746,7 @@ function load(auto){
   progress();
   loadBtn.disabled = true; demoBtn.disabled = true;
   loadBtn.textContent = 'Lade …';
+  loadbarEl.classList.add('active');
 
   Promise.all(jobs.map(function(j){
     var params = new URLSearchParams({source:j.s, area:j.a, days:days});
@@ -582,6 +788,7 @@ function load(auto){
     busy = false;
     loadBtn.disabled = false; demoBtn.disabled = false;
     loadBtn.textContent = 'Brände laden';
+    loadbarEl.classList.remove('active');
   });
 }
 
@@ -608,7 +815,21 @@ function fitToData(){
 
 /* ------------------------------------------------- Schwelle & Filter */
 var threshEl = document.getElementById('thresh');
+var threshBubble = document.getElementById('threshBubble');
 var threshFrame = null;
+
+function positionBubble(){
+  var min = +threshEl.min, max = +threshEl.max, v = +threshEl.value;
+  var pct = (v - min) / (max - min);
+  var w = threshEl.offsetWidth, thumb = 15;
+  threshBubble.style.left = (thumb/2 + pct * (w - thumb)) + 'px';
+}
+['mousedown','touchstart','focus'].forEach(function(ev){
+  threshEl.addEventListener(ev, function(){ threshBubble.classList.add('show'); positionBubble(); });
+});
+['mouseup','touchend','blur'].forEach(function(ev){
+  threshEl.addEventListener(ev, function(){ threshBubble.classList.remove('show'); });
+});
 
 /* Beim Ziehen des Reglers feuert 'input' viel häufiger als die Karte neu
    zeichnen kann — Label sofort, Neuzeichnen gebündelt pro Frame. */
@@ -630,6 +851,8 @@ function updateThreshLabel(t){
   var txt = 'ab ' + t + ' MW';
   document.getElementById('threshLabel').textContent = txt;
   threshEl.setAttribute('aria-valuetext', txt);
+  threshBubble.textContent = txt;
+  positionBubble();
 }
 function applyThreshold(){
   var t = currentThreshold();
@@ -647,6 +870,7 @@ var markers = [];
 
 function render(){
   fireLayer.clearLayers();
+  pulseLayer.clearLayers();
   markers = [];
   var z = map.getZoom();
   var recentCut = Date.now() - 6*3600*1000;
@@ -670,6 +894,17 @@ function render(){
     fireLayer.addLayer(m);
   });
 
+  // Die stärksten Feuer zusätzlich mit einem pulsierenden Ring hervorheben.
+  SHOWN.slice().sort(function(a,b){ return b.frp - a.frp; }).slice(0,5).forEach(function(d){
+    if(d.frp < 30) return;
+    var icon = L.divIcon({
+      className:'pulse-icon',
+      html:'<span class="pulse-ring"></span><span class="pulse-ring d2"></span>',
+      iconSize:[28,28], iconAnchor:[14,14]
+    });
+    L.marker([d.lat, d.lon], {icon:icon, interactive:false, keyboard:false}).addTo(pulseLayer);
+  });
+
   stats(); clusters();
 }
 
@@ -681,8 +916,11 @@ map.on('zoomend', function(){
 });
 
 function popupHTML(d, dt){
+  var color = frpColor(d.frp);
+  var pct = Math.max(4, Math.min(100, (d.frp / 150) * 100));
   return '<div class="pop-title">' + Math.round(d.frp) + ' MW</div>'
-    + '<div style="color:var(--muted);font-size:12px">' + (d.satellite || d.instrument || 'Satellit') + ' · ' + fmtLocal(dt, d.region) + '</div>'
+    + '<div class="pop-bar"><i style="width:' + pct + '%;background:' + color + '"></i></div>'
+    + '<div style="color:var(--muted);font-size:12px;margin-top:7px">' + (d.satellite || d.instrument || 'Satellit') + ' · ' + fmtLocal(dt, d.region) + '</div>'
     + '<div class="pop-grid">'
     + '<span>Koordinaten</span><span>' + d.lat.toFixed(4) + ', ' + d.lon.toFixed(4) + '</span>'
     + '<span>Konfidenz</span><span>' + confLabel(d.confidence) + '</span>'
@@ -707,6 +945,17 @@ function weatherLabel(code){
   if(code >= 95) return 'Gewitter';
   return 'Wetterlage unbekannt';
 }
+function weatherEmoji(code){
+  if(code === 0) return '☀️';
+  if(code === 1 || code === 2) return '🌤️';
+  if(code === 3) return '☁️';
+  if(code === 45 || code === 48) return '🌫️';
+  if(code >= 51 && code <= 57) return '🌦️';
+  if((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return '🌧️';
+  if((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return '🌨️';
+  if(code >= 95) return '⛈️';
+  return '🌡️';
+}
 
 function wireWeather(popup, d){
   var el = popup.getElement(); if(!el) return;
@@ -724,7 +973,7 @@ function wireWeather(popup, d){
         if(!c) throw new Error('keine aktuellen Daten');
         var box = el.querySelector('.pop-wx');
         box.style.display = 'block';
-        box.innerHTML = Math.round(c.temperature_2m) + ' °C · ' + Math.round(c.relative_humidity_2m) + ' % rF<br>'
+        box.innerHTML = weatherEmoji(c.weather_code) + ' ' + Math.round(c.temperature_2m) + ' °C · ' + Math.round(c.relative_humidity_2m) + ' % rF<br>'
           + 'Wind ' + Number(c.wind_speed_10m).toFixed(1) + ' m/s aus ' + Math.round(c.wind_direction_10m) + '°'
           + ' · Böen ' + Number(c.wind_gusts_10m).toFixed(1) + ' m/s<br>'
           + 'Niederschlag ' + Number(c.precipitation).toFixed(1) + ' mm · ' + weatherLabel(c.weather_code)
@@ -741,15 +990,15 @@ function stats(){
   var high = SHOWN.filter(function(d){ return isHigh(d.confidence); }).length;
   var max = SHOWN.reduce(function(m,d){ return Math.max(m, d.frp); }, 0);
   var sum = SHOWN.reduce(function(s,d){ return s + d.frp; }, 0);
-  document.getElementById('s-count').textContent = n ? n.toLocaleString('de-DE') : '–';
-  document.getElementById('s-high').textContent  = n ? high.toLocaleString('de-DE') : '–';
-  document.getElementById('s-frp').textContent   = n ? Math.round(max).toLocaleString('de-DE') : '–';
-  document.getElementById('s-sum').textContent   = n ? Math.round(sum).toLocaleString('de-DE') : '–';
+  animateNumber(document.getElementById('s-count'), n ? n : null);
+  animateNumber(document.getElementById('s-high'),  n ? high : null);
+  animateNumber(document.getElementById('s-frp'),   n ? Math.round(max) : null);
+  animateNumber(document.getElementById('s-sum'),   n ? Math.round(sum) : null);
 
   var de = SHOWN.filter(function(d){ return d.region === 'DE'; }).length;
   var tr = SHOWN.filter(function(d){ return d.region === 'TR'; }).length;
-  document.getElementById('s-de').textContent = n ? de.toLocaleString('de-DE') : '–';
-  document.getElementById('s-tr').textContent = n ? tr.toLocaleString('de-DE') : '–';
+  animateNumber(document.getElementById('s-de'), n ? de : null);
+  animateNumber(document.getElementById('s-tr'), n ? tr : null);
 
   var newest = 0, newestRegion = '';
   SHOWN.forEach(function(d){
@@ -865,7 +1114,7 @@ function clusters(){
   }).sort(function(a,b){ return b.frp - a.frp; }).slice(0,8);
 
   el.innerHTML = '';
-  list.forEach(function(c){
+  list.forEach(function(c, idx){
     var p = nearestProvince(c.lat, c.lon, c.region);
     var tag = c.region ? '<span style="color:var(--muted);font-family:var(--mono);font-size:10px"> ' + c.region + '</span>' : '';
     var name = p ? p.name + (p.dist > 25 ? ' (ca. ' + p.dist + ' km)' : '') : c.lat.toFixed(2) + ', ' + c.lon.toFixed(2);
@@ -873,7 +1122,10 @@ function clusters(){
     li.setAttribute('role', 'button');
     li.tabIndex = 0;
     li.title = 'Auf ' + name + ' zoomen';
-    li.innerHTML = '<div class="cl-name">' + name + tag + '</div>'
+    li.style.borderLeftColor = frpColor(c.frp);
+    li.style.animationDelay = (idx * 45) + 'ms';
+    li.innerHTML = '<div class="cl-rank">' + (idx + 1) + '</div>'
+      + '<div class="cl-name">' + name + tag + '</div>'
       + '<div class="cl-frp">' + Math.round(c.frp) + ' MW</div>'
       + '<div class="cl-sub">' + c.n + ' ' + (c.n === 1 ? 'Punkt' : 'Punkte') + ' · ' + relTime(c.newest) + ' · ' + fmtLocal(new Date(c.newest), c.region) + '</div>';
     function go(){ map.setView([c.lat, c.lon], 11); highlight(c); }
@@ -990,6 +1242,7 @@ function restore(){
   if(s.autorefresh){ autoEl.checked = true; autoEl.onchange(); }
 }
 fields.forEach(function(id){ document.getElementById(id).addEventListener('change', save); });
+setRegionActive('go-both');
 restore();
 
 /* --------------------------------------------------------- Tastatur */
