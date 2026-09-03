@@ -10,3 +10,5 @@ node_modules/
 !docs/**/*.csv
 .vscode/
 .idea/
+.playwright-cli/
+output/playwright/

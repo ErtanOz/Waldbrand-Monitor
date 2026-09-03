@@ -19,8 +19,9 @@ Eine Single-File-Webapp, die aktive Brände aus den Satellitendaten von **NASA F
 ## Einrichtung
 
 1. MAP_KEY kostenlos anfordern: <https://firms.modaps.eosdis.nasa.gov/api/map_key/> — es genügt eine E-Mail-Adresse, kein Earthdata-Konto
-2. `index.html` im Browser öffnen (bei lokalen Dateien ggf. über einen kleinen Webserver, siehe unten)
-3. Schlüssel ins Feld **NASA FIRMS MAP_KEY** eintragen und **Brände laden**
+2. Optional einen kostenlosen, domaingebundenen [CARTO Basemap API-Key](https://carto.com/basemaps/apikey/) anfordern. Ohne diesen verwendet die App automatisch einen OpenStreetMap-Fallback.
+3. `index.html` im Browser öffnen (bei lokalen Dateien ggf. über einen kleinen Webserver, siehe unten)
+4. Schlüssel in die jeweiligen Felder eintragen und **Brände laden**. Die Werte werden ausschließlich lokal im Browser gespeichert und nicht ins Repository geschrieben.
 
 Lokal ausliefern, falls der Browser die Anfrage beim Öffnen per `file://` blockiert:
 
@@ -49,7 +50,9 @@ FIRMS meldet thermische Anomalien, keine Waldbrände. In Mitteleuropa stammt ein
 
 ## Sicherheit
 
-Der MAP_KEY wird ausschließlich im Browser gehalten und nur an NASA gesendet. Er gehört **nicht** ins Repository und nicht in clientseitigen Code einer öffentlich erreichbaren Instanz — dort stattdessen über einen eigenen Proxy (n8n, Cloudflare Worker, nginx) leiten, der den Schlüssel serverseitig einsetzt. Da der Schlüssel an die E-Mail-Adresse gebunden und nicht ohne Weiteres austauschbar ist, lohnt sich diese Vorsicht.
+Der FIRMS MAP_KEY wird ausschließlich im Browser gehalten und nur an NASA gesendet. Er gehört **nicht** ins Repository und nicht in clientseitigen Code einer öffentlich erreichbaren Instanz — dort stattdessen über einen eigenen Proxy (n8n, Cloudflare Worker, nginx) leiten, der den Schlüssel serverseitig einsetzt. Da der Schlüssel an die E-Mail-Adresse gebunden und nicht ohne Weiteres austauschbar ist, lohnt sich diese Vorsicht.
+
+Der CARTO-Key wird ebenfalls nicht im Quellcode hinterlegt. CARTO-Basemap-Keys sind für Client-Anwendungen vorgesehen, sollten aber auf die verwendete Domain beschränkt und nicht zwischen unabhängigen Projekten geteilt werden.
 
 ## Datenquellen
 
