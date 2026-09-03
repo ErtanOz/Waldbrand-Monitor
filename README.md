@@ -1,6 +1,6 @@
 # Waldbrand-Monitor — Deutschland & Türkiye
 
-Eine Single-File-Webapp, die aktive Brände aus den Satellitendaten von **NASA FIRMS** auf einer Karte für Deutschland und die Türkei darstellt. Kein Build-Schritt, kein Backend, keine Abhängigkeit außer Leaflet: eine HTML-Datei, die im Browser läuft.
+Eine schlanke Webapp, die aktive Brände aus den Satellitendaten von **NASA FIRMS** auf einer Karte für Deutschland und die Türkei darstellt. Die statische Oberfläche läuft ohne Build-Schritt; eine Netlify Function schützt den NASA-Zugangsschlüssel.
 
 ![Status](https://img.shields.io/badge/Daten-NASA%20FIRMS%20NRT-orange)
 ![Lizenz](https://img.shields.io/badge/Lizenz-MIT-blue)
@@ -18,19 +18,18 @@ Eine Single-File-Webapp, die aktive Brände aus den Satellitendaten von **NASA F
 
 ## Einrichtung
 
-1. MAP_KEY kostenlos anfordern: <https://firms.modaps.eosdis.nasa.gov/api/map_key/> — es genügt eine E-Mail-Adresse, kein Earthdata-Konto
-2. Optional einen kostenlosen, domaingebundenen [CARTO Basemap API-Key](https://carto.com/basemaps/apikey/) anfordern. Ohne diesen verwendet die App automatisch einen OpenStreetMap-Fallback.
-3. `index.html` im Browser öffnen (bei lokalen Dateien ggf. über einen kleinen Webserver, siehe unten)
-4. Schlüssel in die jeweiligen Felder eintragen und **Brände laden**. Die Werte werden ausschließlich lokal im Browser gespeichert und nicht ins Repository geschrieben.
+1. MAP_KEY kostenlos anfordern: <https://firms.modaps.eosdis.nasa.gov/api/map_key/> — es genügt eine E-Mail-Adresse, kein Earthdata-Konto.
+2. In Netlify unter **Project configuration → Environment variables** die Variable `NASA_FIRMS_MAP_KEY` anlegen und auf den Scope **Functions** beschränken.
+3. Optional einen kostenlosen, domaingebundenen [CARTO Basemap API-Key](https://carto.com/basemaps/apikey/) anfordern. Ohne diesen verwendet die App automatisch einen OpenStreetMap-Fallback.
+4. Lokal mit `npx netlify dev` starten oder das Repository über Netlify deployen.
 
-Lokal ausliefern, falls der Browser die Anfrage beim Öffnen per `file://` blockiert:
+Lokal ausführen:
 
 ```bash
-python3 -m http.server 8000
-# danach http://localhost:8000 aufrufen
+npx netlify dev
 ```
 
-Über **GitHub Pages** läuft die App ohne weitere Schritte: Repository-Einstellungen → Pages → Branch `main`, Ordner `/ (root)`.
+Die Live-Daten benötigen die Netlify Function. GitHub Pages kann weiterhin die Oberfläche und den Demo-Modus anzeigen, besitzt aber keinen sicheren serverseitigen Zugriff auf den NASA-Key.
 
 ## Hinweise zur API
 
@@ -50,7 +49,7 @@ FIRMS meldet thermische Anomalien, keine Waldbrände. In Mitteleuropa stammt ein
 
 ## Sicherheit
 
-Der FIRMS MAP_KEY wird ausschließlich im Browser gehalten und nur an NASA gesendet. Er gehört **nicht** ins Repository und nicht in clientseitigen Code einer öffentlich erreichbaren Instanz — dort stattdessen über einen eigenen Proxy (n8n, Cloudflare Worker, nginx) leiten, der den Schlüssel serverseitig einsetzt. Da der Schlüssel an die E-Mail-Adresse gebunden und nicht ohne Weiteres austauschbar ist, lohnt sich diese Vorsicht.
+Der FIRMS MAP_KEY wird ausschließlich als Netlify Environment Variable gespeichert und serverseitig von der Function gelesen. Er erscheint weder im Repository noch im Browser. Die Function validiert die Parameter, begrenzt Anfragen pro IP und nutzt CDN-Caching, um das NASA-Kontingent zu schützen.
 
 Der CARTO-Key wird ebenfalls nicht im Quellcode hinterlegt. CARTO-Basemap-Keys sind für Client-Anwendungen vorgesehen, sollten aber auf die verwendete Domain beschränkt und nicht zwischen unabhängigen Projekten geteilt werden.
 

@@ -191,17 +191,14 @@
   <aside class="rail">
     <div class="brand">
       <h1>ATEŞ<span>.</span></h1>
-      <p><span class="livedot" id="livedot"></span><span id="statusline">Bereit — MAP_KEY eintragen</span></p>
+      <p><span class="livedot" id="livedot"></span><span id="statusline">Bereit — geschützter NASA-Zugang</span></p>
     </div>
 
     <div class="rail-body">
 
       <section class="block">
         <h2>Datenquelle</h2>
-        <label class="field">
-          <span>NASA FIRMS MAP_KEY</span>
-          <input type="password" id="firmsKey" placeholder="z. B. 3a1f…" autocomplete="off" spellcheck="false">
-        </label>
+        <p class="hint" style="margin:0 0 12px">NASA FIRMS wird sicher über die Netlify Function geladen. Der API-Key bleibt auf dem Server.</p>
         <div class="row">
           <label class="field">
             <span>Sensor</span>
@@ -231,7 +228,6 @@
             <option value="tr">Türkiye</option>
             <option value="med">Östliches Mittelmeer</option>
             <option value="view">Aktueller Kartenausschnitt</option>
-            <option value="world">Weltweit</option>
           </select>
         </label>
         <div class="btn-row">
@@ -242,7 +238,7 @@
           <input type="checkbox" id="autorefresh" style="accent-color:var(--ember-2)"> alle 10 Minuten neu laden
         </label>
         <p class="hint">Jede Kombination aus Sensor und Gebiet ist eine eigene FIRMS-Anfrage — „Alle VIIRS" mit beiden Ländern sind also 6 von 5.000 Transaktionen je 10 Minuten.</p>
-        <p class="hint">MAP_KEY kostenlos unter <a href="https://firms.modaps.eosdis.nasa.gov/api/map_key/" target="_blank" rel="noopener">firms.modaps.eosdis.nasa.gov</a>. Der Schlüssel bleibt im Browser und geht nur an NASA.</p>
+        <p class="hint">Anfragen sind auf den Kartenbereich Deutschland–Türkiye begrenzt und werden zum Schutz des NASA-Kontingents zwischengespeichert.</p>
       </section>
 
       <section class="block">
@@ -424,13 +420,10 @@ function recall(k,cb){
     if(v) cb(v);
   }catch(e){}
 }
-var firmsInput = document.getElementById('firmsKey');
 var cartoInput = document.getElementById('cartoKey');
 var owmInput   = document.getElementById('owmKey');
-recall('firms_map_key', function(v){ firmsInput.value = v; });
 recall('carto_basemap_key', function(v){ cartoInput.value = v; configureBasemap(v); });
 recall('owm_key', function(v){ owmInput.value = v; });
-firmsInput.addEventListener('change', function(){ store('firms_map_key', firmsInput.value.trim()); });
 cartoInput.addEventListener('change', function(){
   var key = cartoInput.value.trim();
   store('carto_basemap_key', key);
@@ -513,7 +506,6 @@ function parseCSV(text){
 function areaParams(){          // liefert eine Liste von Gebieten -> je ein Request
   var a = document.getElementById('area').value;
   if(a === 'both')  return [bboxStr('de'), bboxStr('tr')];
-  if(a === 'world') return ['world'];
   if(a === 'view'){
     var b = map.getBounds();
     return [[b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
@@ -523,8 +515,6 @@ function areaParams(){          // liefert eine Liste von Gebieten -> je ein Req
 }
 
 function load(){
-  var key = firmsInput.value.trim();
-  if(!key){ toast('Kein MAP_KEY eingetragen. Registrierung ist kostenlos — oder starte mit Demo-Daten.'); return; }
   var src   = document.getElementById('source').value;
   var days  = document.getElementById('days').value;
   var areas = areaParams();
@@ -539,13 +529,17 @@ function load(){
   document.getElementById('load').disabled = true;
 
   Promise.all(jobs.map(function(j){
-    var url = 'https://firms.modaps.eosdis.nasa.gov/api/area/csv/'
-            + encodeURIComponent(key) + '/' + j.s + '/' + j.a + '/' + days;
+    var params = new URLSearchParams({source:j.s, area:j.a, days:days});
+    var url = '/api/firms?' + params.toString();
     return fetch(url).then(function(r){
-      if(!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
+      return r.text().then(function(body){
+        if(!r.ok){
+          try{ throw new Error(JSON.parse(body).error || ('HTTP ' + r.status)); }
+          catch(e){ if(e instanceof SyntaxError) throw new Error('HTTP ' + r.status); throw e; }
+        }
+        return body;
+      });
     }).then(function(txt){
-      if(/Invalid MAP_KEY|not authorized/i.test(txt)) throw new Error('MAP_KEY ungültig');
       if(/transaction limit/i.test(txt)) throw new Error('Kontingent erschöpft — in 10 Minuten erneut versuchen');
       return parseCSV(txt);
     });
@@ -566,7 +560,7 @@ function load(){
   })
   .catch(function(e){
     status('Laden fehlgeschlagen', false);
-    toast('FIRMS antwortet nicht: ' + e.message + '. Bei "Failed to fetch" blockiert der Browser die Anfrage (CORS) — dann die Datei lokal über einen Webserver öffnen oder über einen eigenen Proxy laden.');
+    toast('FIRMS antwortet nicht: ' + e.message);
   })
   .then(function(){ document.getElementById('load').disabled = false; });
 }
@@ -819,7 +813,7 @@ document.getElementById('demo').onclick = function(){
   });
   ALL = out;
   afterLoad('Demo-Daten — nicht real');
-  toast('Demo-Modus: synthetische Punkte zum Testen der Oberfläche. Für echte Lagebilder MAP_KEY eintragen.');
+  toast('Demo-Modus: synthetische Punkte zum Testen der Oberfläche.');
 };
 
 document.getElementById('autorefresh').onchange = function(e){
@@ -830,7 +824,7 @@ document.getElementById('autorefresh').onchange = function(e){
   }
 };
 
-status('Bereit — MAP_KEY eintragen oder Demo starten', false);
+status('Bereit — Brände laden oder Demo starten', false);
 })();
 </script>
 </body>
