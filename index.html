@@ -271,12 +271,8 @@
       </section>
 
       <section class="block">
-        <h2>Wetterkontext (optional)</h2>
-        <label class="field">
-          <span>OpenWeatherMap API-Key</span>
-          <input type="password" id="owmKey" placeholder="für Wind & Luftfeuchte am Brandort" autocomplete="off" spellcheck="false">
-        </label>
-        <p class="hint">Mit Schlüssel lädt jedes Popup auf Klick Temperatur, Wind und Luftfeuchte für den Brandort.</p>
+        <h2>Wetterkontext <span class="thresh">Open-Meteo</span></h2>
+        <p class="hint" style="margin-top:0">Ohne API-Key: Im Popup lassen sich Temperatur, Luftfeuchte, Niederschlag und Wind am Brandort abrufen.</p>
       </section>
 
       <section class="block">
@@ -369,28 +365,6 @@ document.getElementById('go-de').onclick   = function(){ goTo('de'); };
 document.getElementById('go-tr').onclick   = function(){ goTo('tr'); };
 document.getElementById('go-both').onclick = function(){ goTo('both'); };
 goTo('both');
-
-/* ------------------------------------------------------- Key-Speicher */
-function store(k,v){
-  try{
-    if(window.storage) return window.storage.set(k,v);
-    if(v) window.localStorage.setItem(k,v);
-    else window.localStorage.removeItem(k);
-  }catch(e){}
-}
-function recall(k,cb){
-  try{
-    if(window.storage){
-      window.storage.get(k).then(function(r){ if(r && r.value) cb(r.value); }).catch(function(){});
-      return;
-    }
-    var v = window.localStorage.getItem(k);
-    if(v) cb(v);
-  }catch(e){}
-}
-var owmInput   = document.getElementById('owmKey');
-recall('owm_key', function(v){ owmInput.value = v; });
-owmInput.addEventListener('change', function(){ store('owm_key', owmInput.value.trim()); });
 
 /* -------------------------------------------------------------- Utils */
 function toast(msg){
@@ -594,28 +568,51 @@ function popupHTML(d, dt){
     + '<span>Pixel</span><span>' + (d.scan||'?') + ' × ' + (d.track||'?') + ' km</span>'
     + '<span>Überflug</span><span>' + (d.daynight === 'N' ? 'Nacht' : 'Tag') + '</span>'
     + '</div>'
-    + (owmInput.value.trim()
-        ? '<button class="pop-btn" data-wx="1">Wetter am Brandort laden</button><div class="pop-wx" style="display:none"></div>'
-        : '');
+    + '<button class="pop-btn" data-wx="1">Wetter am Brandort laden</button><div class="pop-wx" style="display:none"></div>';
+}
+
+function weatherLabel(code){
+  if(code === 0) return 'klar';
+  if(code === 1) return 'überwiegend klar';
+  if(code === 2) return 'teilweise bewölkt';
+  if(code === 3) return 'bedeckt';
+  if(code === 45 || code === 48) return 'Nebel';
+  if(code >= 51 && code <= 57) return 'Nieselregen';
+  if(code >= 61 && code <= 67) return 'Regen';
+  if(code >= 71 && code <= 77) return 'Schnee';
+  if(code >= 80 && code <= 82) return 'Regenschauer';
+  if(code >= 85 && code <= 86) return 'Schneeschauer';
+  if(code >= 95) return 'Gewitter';
+  return 'Wetterlage unbekannt';
 }
 
 function wireWeather(popup, d){
   var el = popup.getElement(); if(!el) return;
   var btn = el.querySelector('[data-wx]'); if(!btn) return;
   btn.onclick = function(){
-    var key = owmInput.value.trim(); if(!key) return;
     btn.disabled = true; btn.textContent = 'Lade …';
-    fetch('https://api.openweathermap.org/data/2.5/weather?lat=' + d.lat + '&lon=' + d.lon
-          + '&units=metric&lang=de&appid=' + encodeURIComponent(key))
-      .then(function(r){ return r.json(); })
+    var params = new URLSearchParams({
+      latitude:d.lat,
+      longitude:d.lon,
+      current:'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
+      wind_speed_unit:'ms',
+      timezone:'auto'
+    });
+    fetch('https://api.open-meteo.com/v1/forecast?' + params.toString())
+      .then(function(r){
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(function(w){
-        if(!w.main) throw new Error(w.message || 'keine Daten');
+        var c = w.current;
+        if(!c) throw new Error('keine aktuellen Daten');
         var box = el.querySelector('.pop-wx');
-        var deg = w.wind && w.wind.deg != null ? ' aus ' + Math.round(w.wind.deg) + '°' : '';
         box.style.display = 'block';
-        box.innerHTML = Math.round(w.main.temp) + ' °C · ' + w.main.humidity + ' % rF<br>'
-          + 'Wind ' + (w.wind ? w.wind.speed.toFixed(1) : '?') + ' m/s' + deg + '<br>'
-          + (w.weather && w.weather[0] ? w.weather[0].description : '');
+        box.innerHTML = Math.round(c.temperature_2m) + ' °C · ' + Math.round(c.relative_humidity_2m) + ' % rF<br>'
+          + 'Wind ' + Number(c.wind_speed_10m).toFixed(1) + ' m/s aus ' + Math.round(c.wind_direction_10m) + '°'
+          + ' · Böen ' + Number(c.wind_gusts_10m).toFixed(1) + ' m/s<br>'
+          + 'Niederschlag ' + Number(c.precipitation).toFixed(1) + ' mm · ' + weatherLabel(c.weather_code)
+          + '<br><small>Quelle: Open-Meteo · Modellwert</small>';
         btn.remove();
       })
       .catch(function(e){ btn.disabled = false; btn.textContent = 'Wetter nicht verfügbar (' + e.message + ')'; });

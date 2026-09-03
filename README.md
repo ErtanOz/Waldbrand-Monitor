@@ -11,7 +11,7 @@ Eine schlanke Webapp, die aktive Brände aus den Satellitendaten von **NASA FIRM
 - **Mehrere Sensoren kombinierbar** — VIIRS NOAA-20, NOAA-21 und Suomi-NPP zusammen (rund sechs Überflüge pro Tag statt zwei), alternativ MODIS
 - **FRP-Spektrum als Filter** — Histogramm der Strahlungsleistung mit Schwellenregler, um schwache Signale (Feldbrände, Gasfackeln, Industrieanlagen) auszublenden
 - **Hotspot-Cluster** — 0,15°-Raster, nach Summe der Strahlungsleistung sortiert, benannt nach nächstgelegenem Ort, Klick zoomt hin
-- **Wetterkontext** — optional über OpenWeatherMap: Temperatur, Luftfeuchte und Wind am Brandort direkt im Popup
+- **Wetterkontext** — ohne API-Key über Open-Meteo: Temperatur, Luftfeuchte, Niederschlag, Wind und Böen direkt im Popup
 - **Export** — GeoJSON und CSV in EPSG:4326, direkt in QGIS ladbar
 - **Ortszeit je Land** — Europe/Berlin bzw. Europe/Istanbul
 - **Demo-Modus** — synthetische Testpunkte ohne API-Schlüssel, klar als solche gekennzeichnet
@@ -53,7 +53,7 @@ Der FIRMS MAP_KEY wird ausschließlich als Netlify Environment Variable gespeich
 ## Datenquellen
 
 - Branddaten: [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/) (LANCE / EOSDIS), VIIRS und MODIS
-- Wetter: [OpenWeatherMap](https://openweathermap.org/) (optional)
+- Wetter: [Open-Meteo](https://open-meteo.com/) (ohne API-Key)
 - Kartenhintergrund: © OpenStreetMap-Mitwirkende; Satellitenbild: Esri, Maxar, Earthstar Geographics
 - Kartenbibliothek: [Leaflet](https://leafletjs.com/)
 
