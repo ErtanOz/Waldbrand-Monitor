@@ -52,7 +52,7 @@ export default async function handler(request) {
   if (!validArea(area)) return json("Das Gebiet liegt außerhalb des erlaubten Ausschnitts.", 400);
 
   const upstream = new URL("https://firms.modaps.eosdis.nasa.gov/api/area/csv/");
-  upstream.pathname += [apiKey, source, area, String(days)].map(encodeURIComponent).join("/");
+  upstream.pathname += [encodeURIComponent(apiKey), encodeURIComponent(source), area, String(days)].join("/");
 
   try {
     const response = await fetch(upstream, { signal: AbortSignal.timeout(25000) });
