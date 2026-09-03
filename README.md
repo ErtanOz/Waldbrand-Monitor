@@ -5,6 +5,9 @@ Eine schlanke Webapp, die aktive Brände aus den Satellitendaten von **NASA FIRM
 ![Status](https://img.shields.io/badge/Daten-NASA%20FIRMS%20NRT-orange)
 ![Lizenz](https://img.shields.io/badge/Lizenz-MIT-blue)
 
+<img width="1916" height="1019" alt="image" src="https://github.com/user-attachments/assets/cb6768f1-4e83-4710-9edc-b0365ea34c16" />
+
+
 ## Funktionen
 
 - **Zwei Länder in einer Karte** — Deutschland und Türkiye werden als getrennte Bounding Boxes abgefragt und zusammengeführt; Umschalter DE / TR / BEIDE über der Karte
