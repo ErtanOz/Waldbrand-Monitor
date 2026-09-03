@@ -1,6 +1,6 @@
 # Waldbrand-Monitor — Deutschland & Türkiye
 
-Eine schlanke Webapp, die aktive Brände aus den Satellitendaten von **NASA FIRMS** auf einer Karte für Deutschland und die Türkei darstellt. Die statische Oberfläche läuft ohne Build-Schritt; eine Netlify Function schützt den NASA-Zugangsschlüssel.
+Eine schlanke Webapp, die aktive Brände aus den Satellitendaten von **NASA FIRMS** auf einer Karte für Deutschland und die Türkei darstellt. Die statische Oberfläche läuft ohne Build-Schritt; Netlify Functions kapseln NASA FIRMS und Open-Meteo serverseitig.
 
 ![Status](https://img.shields.io/badge/Daten-NASA%20FIRMS%20NRT-orange)
 ![Lizenz](https://img.shields.io/badge/Lizenz-MIT-blue)
@@ -49,6 +49,8 @@ FIRMS meldet thermische Anomalien, keine Waldbrände. In Mitteleuropa stammt ein
 ## Sicherheit
 
 Der FIRMS MAP_KEY wird ausschließlich als Netlify Environment Variable gespeichert und serverseitig von der Function gelesen. Er erscheint weder im Repository noch im Browser. Die Function validiert die Parameter, begrenzt Anfragen pro IP und nutzt CDN-Caching, um das NASA-Kontingent zu schützen.
+
+Auch Open-Meteo wird über eine eigene Netlify Function aufgerufen. Dafür ist kein API-Key erforderlich; Koordinaten werden validiert und Antworten zehn Minuten am CDN zwischengespeichert.
 
 ## Datenquellen
 

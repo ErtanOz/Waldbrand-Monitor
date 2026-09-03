@@ -271,7 +271,7 @@
       </section>
 
       <section class="block">
-        <h2>Wetterkontext <span class="thresh">Open-Meteo</span></h2>
+        <h2>Wetterkontext <span class="thresh">Netlify · Open-Meteo</span></h2>
         <p class="hint" style="margin-top:0">Ohne API-Key: Im Popup lassen sich Temperatur, Luftfeuchte, Niederschlag und Wind am Brandort abrufen.</p>
       </section>
 
@@ -591,14 +591,8 @@ function wireWeather(popup, d){
   var btn = el.querySelector('[data-wx]'); if(!btn) return;
   btn.onclick = function(){
     btn.disabled = true; btn.textContent = 'Lade …';
-    var params = new URLSearchParams({
-      latitude:d.lat,
-      longitude:d.lon,
-      current:'temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m',
-      wind_speed_unit:'ms',
-      timezone:'auto'
-    });
-    fetch('https://api.open-meteo.com/v1/forecast?' + params.toString())
+    var params = new URLSearchParams({latitude:d.lat, longitude:d.lon});
+    fetch('/api/weather?' + params.toString())
       .then(function(r){
         if(!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
@@ -612,7 +606,7 @@ function wireWeather(popup, d){
           + 'Wind ' + Number(c.wind_speed_10m).toFixed(1) + ' m/s aus ' + Math.round(c.wind_direction_10m) + '°'
           + ' · Böen ' + Number(c.wind_gusts_10m).toFixed(1) + ' m/s<br>'
           + 'Niederschlag ' + Number(c.precipitation).toFixed(1) + ' mm · ' + weatherLabel(c.weather_code)
-          + '<br><small>Quelle: Open-Meteo · Modellwert</small>';
+          + '<br><small>Quelle: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> · Modellwert</small>';
         btn.remove();
       })
       .catch(function(e){ btn.disabled = false; btn.textContent = 'Wetter nicht verfügbar (' + e.message + ')'; });
