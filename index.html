@@ -123,8 +123,9 @@
   ol.clusters li{
     border-bottom:1px solid var(--line);padding:9px 2px;cursor:pointer;
     display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;
+    border-radius:6px;
   }
-  ol.clusters li:hover{background:rgba(244,129,63,.07)}
+  ol.clusters li:hover,ol.clusters li:focus-visible{background:rgba(244,129,63,.07)}
   ol.clusters li:last-child{border-bottom:none}
   .cl-name{font-weight:600}
   .cl-sub{grid-column:1;font-family:var(--mono);font-size:11px;color:var(--muted)}
@@ -146,7 +147,19 @@
     padding:10px 14px;border-radius:8px;max-width:min(560px,86vw);font-size:13px;
     box-shadow:0 10px 30px rgba(0,0,0,.45);display:none;
   }
-  .toast.show{display:block}
+  .toast.show{display:flex;align-items:flex-start;gap:10px}
+  .toast.err{border-left-color:var(--ember-3)}
+  .toast span{flex:1}
+  .toast button{
+    background:none;border:0;color:var(--muted);cursor:pointer;
+    font-size:16px;line-height:1;padding:0 2px;flex:none;
+  }
+  .toast button:hover{color:var(--text)}
+  .sr-only{
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+  }
+  .stale .livedot{background:var(--muted)}
   .basemap-switch{
     position:absolute;right:12px;top:12px;z-index:500;display:flex;gap:1px;
     background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;
@@ -191,7 +204,7 @@
   <aside class="rail">
     <div class="brand">
       <h1>ATEŞ<span>.</span></h1>
-      <p><span class="livedot" id="livedot"></span><span id="statusline">Bereit — geschützter NASA-Zugang</span></p>
+      <p role="status" aria-live="polite"><span class="livedot" id="livedot"></span><span id="statusline">Bereit — geschützter NASA-Zugang</span></p>
     </div>
 
     <div class="rail-body">
@@ -250,8 +263,8 @@
           <div class="stat"><b id="s-sum">–</b><small>Σ FRP (MW)</small></div>
         </div>
         <div class="split" id="split">
-          <div data-region="DE"><span class="flag">DEUTSCHLAND</span><span class="val" id="s-de">–</span></div>
-          <div data-region="TR"><span class="flag">TÜRKİYE</span><span class="val" id="s-tr">–</span></div>
+          <div data-region="DE" role="button" tabindex="0" title="Karte auf Deutschland zoomen"><span class="flag">DEUTSCHLAND</span><span class="val" id="s-de">–</span></div>
+          <div data-region="TR" role="button" tabindex="0" title="Karte auf Türkiye zoomen"><span class="flag">TÜRKİYE</span><span class="val" id="s-tr">–</span></div>
         </div>
       </section>
 
@@ -260,9 +273,9 @@
         <div class="spectrum">
           <canvas id="hist" width="640" height="128" aria-label="Verteilung der Strahlungsleistung"></canvas>
           <div class="scale"><span>schwach</span><span>Feuerintensität (log)</span><span>stark</span></div>
-          <input type="range" id="thresh" min="0" max="100" value="0" aria-label="Mindest-FRP">
+          <input type="range" id="thresh" min="0" max="100" value="0" aria-label="Mindest-FRP" aria-valuetext="ab 0 MW">
         </div>
-        <p class="hint">Filtert schwache Signale (Industrie, Gasfackeln, Brandrodung) aus der Karte.</p>
+        <p class="hint">Filtert schwache Signale (Industrie, Gasfackeln, Brandrodung) aus der Karte. <span id="filteredOut"></span></p>
       </section>
 
       <section class="block">
@@ -303,7 +316,10 @@
       <div class="ramp"><i style="background:#FFD166"></i><i style="background:#F4A03F"></i><i style="background:#F4813F"></i><i style="background:#E23E2E"></i><i style="background:#FFF3D6"></i></div>
       <div class="scale"><span>&lt;5</span><span>20</span><span>50</span><span>100</span><span>MW+</span></div>
     </div>
-    <div class="toast" id="toast"></div>
+    <div class="toast" id="toast" role="status" aria-live="polite">
+      <span id="toast-text"></span>
+      <button type="button" id="toast-close" aria-label="Meldung schließen">×</button>
+    </div>
   </main>
 </div>
 
@@ -324,8 +340,8 @@ var sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Worl
   maxZoom:19, attribution:'Esri, Maxar, Earthstar Geographics'
 });
 
-document.getElementById('bm-dark').onclick = function(){ swapBase(true); };
-document.getElementById('bm-sat').onclick  = function(){ swapBase(false); };
+document.getElementById('bm-dark').onclick = function(){ swapBase(true); save(); };
+document.getElementById('bm-sat').onclick  = function(){ swapBase(false); save(); };
 function swapBase(isDark){
   if(isDark){ map.removeLayer(sat); dark.addTo(map); }
   else { map.removeLayer(dark); sat.addTo(map); }
@@ -339,6 +355,7 @@ var fireLayer = L.layerGroup().addTo(map);
 var ALL = [];        // alle geladenen Detektionen
 var SHOWN = [];      // nach FRP-Schwelle gefiltert
 var timer = null;
+var lastLoad = 0;   // Zeitpunkt des letzten erfolgreichen Ladens
 var BOX = {                       // west, süd, ost, nord
   de: [5.7, 47.2, 15.2, 55.2],
   tr: [25.6, 35.7, 44.9, 42.2],
@@ -367,14 +384,30 @@ document.getElementById('go-both').onclick = function(){ goTo('both'); };
 goTo('both');
 
 /* -------------------------------------------------------------- Utils */
-function toast(msg){
-  var t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(t._h); t._h = setTimeout(function(){ t.classList.remove('show'); }, 7000);
+var toastEl = document.getElementById('toast');
+function toast(msg, isError){
+  document.getElementById('toast-text').textContent = msg;
+  toastEl.classList.toggle('err', !!isError);
+  toastEl.classList.add('show');
+  clearTimeout(toastEl._h);
+  // Fehler bleiben länger stehen, damit sie in Ruhe gelesen werden können.
+  toastEl._h = setTimeout(hideToast, isError ? 12000 : 7000);
 }
+function hideToast(){ clearTimeout(toastEl._h); toastEl.classList.remove('show'); }
+document.getElementById('toast-close').onclick = hideToast;
+document.addEventListener('keydown', function(e){ if(e.key === 'Escape') hideToast(); });
+
 function status(txt, live){
   document.getElementById('statusline').textContent = txt;
   document.getElementById('livedot').classList.toggle('on', !!live);
+}
+function relTime(ms){
+  var min = Math.round((Date.now() - ms) / 60000);
+  if(min < 1) return 'gerade eben';
+  if(min < 60) return 'vor ' + min + ' min';
+  var h = Math.floor(min/60);
+  if(h < 24) return 'vor ' + h + ' h';
+  return 'vor ' + Math.floor(h/24) + ' Tagen';
 }
 function num(v){ var n = parseFloat(v); return isFinite(n) ? n : 0; }
 
@@ -407,6 +440,11 @@ function acqDate(d){ // "2026-08-12", "1342" -> Date (UTC)
   return new Date(d.acq_date + 'T' + t.slice(0,2) + ':' + t.slice(2) + ':00Z');
 }
 function fmtLocal(dt, region){
+  // Außerhalb von DE/TR (z. B. Mittelmeer-Ausschnitt) wäre eine türkische
+  // Ortszeit irreführend — dort bleibt es bei UTC.
+  if(region !== 'DE' && region !== 'TR'){
+    return dt.toISOString().slice(0,16).replace('T',' ') + ' UTC';
+  }
   var opts = {timeZone: region === 'DE' ? 'Europe/Berlin' : 'Europe/Istanbul',
               day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'};
   if(region === 'DE') opts.timeZoneName = 'short';
@@ -437,21 +475,57 @@ function parseCSV(text){
 }
 
 /* ------------------------------------------------------------- Laden */
+/* Die Netlify-Function akzeptiert nur diesen Ausschnitt und maximal 50° × 25°.
+   Ein herausgezoomter Kartenausschnitt würde sonst mit HTTP 400 abgewiesen. */
+var API_BOX = {west:-15, south:25, east:55, north:60, maxW:50, maxH:25};
+
+function clampView(b){
+  var west  = Math.max(API_BOX.west,  b.getWest());
+  var east  = Math.min(API_BOX.east,  b.getEast());
+  var south = Math.max(API_BOX.south, b.getSouth());
+  var north = Math.min(API_BOX.north, b.getNorth());
+  if(west >= east || south >= north) return null;   // Ausschnitt liegt komplett außerhalb
+
+  var clipped = false;
+  if(east - west > API_BOX.maxW){
+    var cx = (east + west) / 2;
+    west = cx - API_BOX.maxW/2; east = cx + API_BOX.maxW/2; clipped = true;
+  }
+  if(north - south > API_BOX.maxH){
+    var cy = (north + south) / 2;
+    south = cy - API_BOX.maxH/2; north = cy + API_BOX.maxH/2; clipped = true;
+  }
+  return {
+    bbox: [west, south, east, north].map(function(v){ return v.toFixed(2); }).join(','),
+    clipped: clipped
+  };
+}
+
 function areaParams(){          // liefert eine Liste von Gebieten -> je ein Request
   var a = document.getElementById('area').value;
   if(a === 'both')  return [bboxStr('de'), bboxStr('tr')];
   if(a === 'view'){
-    var b = map.getBounds();
-    return [[b.getWest(), b.getSouth(), b.getEast(), b.getNorth()]
-             .map(function(v){ return v.toFixed(2); }).join(',')];
+    var v = clampView(map.getBounds());
+    if(!v){
+      toast('Der Kartenausschnitt liegt außerhalb des abgedeckten Gebiets (Europa–Türkiye). Bitte hineinzoomen.', true);
+      return [];
+    }
+    if(v.clipped) toast('Ausschnitt zu groß — es wird der maximal erlaubte Bereich (50° × 25°) um die Kartenmitte abgefragt.');
+    return [v.bbox];
   }
   return [bboxStr(a)];
 }
 
-function load(){
+var busy = false;
+var loadBtn = document.getElementById('load');
+var demoBtn = document.getElementById('demo');
+
+function load(auto){
+  if(busy) return;                       // Doppelklicks / Auto-Refresh während des Ladens
   var src   = document.getElementById('source').value;
   var days  = document.getElementById('days').value;
   var areas = areaParams();
+  if(!areas.length) return;
   var srcs  = src === 'ALL_VIIRS'
             ? ['VIIRS_NOAA20_NRT','VIIRS_SNPP_NRT','VIIRS_NOAA21_NRT']
             : [src];
@@ -459,8 +533,14 @@ function load(){
   var jobs = [];
   srcs.forEach(function(s){ areas.forEach(function(a){ jobs.push({s:s, a:a}); }); });
 
-  status('Lade FIRMS-Daten (' + jobs.length + ' Abfrage' + (jobs.length > 1 ? 'n' : '') + ') …', true);
-  document.getElementById('load').disabled = true;
+  busy = true;
+  var done = 0;
+  function progress(){
+    status('Lade FIRMS-Daten … ' + done + '/' + jobs.length + ' Abfragen', true);
+  }
+  progress();
+  loadBtn.disabled = true; demoBtn.disabled = true;
+  loadBtn.textContent = 'Lade …';
 
   Promise.all(jobs.map(function(j){
     var params = new URLSearchParams({source:j.s, area:j.a, days:days});
@@ -475,6 +555,7 @@ function load(){
       });
     }).then(function(txt){
       if(/transaction limit/i.test(txt)) throw new Error('Kontingent erschöpft — in 10 Minuten erneut versuchen');
+      done++; progress();
       return parseCSV(txt);
     });
   }))
@@ -490,24 +571,33 @@ function load(){
         ALL.push(d);
       });
     });
-    afterLoad((src === 'ALL_VIIRS' ? 'VIIRS ×3' : src) + ' · ' + days + ' Tage');
+    lastLoad = Date.now();
+    afterLoad((src === 'ALL_VIIRS' ? 'VIIRS ×3' : src) + ' · ' + days + ' Tage', auto);
   })
   .catch(function(e){
-    status('Laden fehlgeschlagen', false);
-    toast('FIRMS antwortet nicht: ' + e.message);
+    status('Laden fehlgeschlagen — erneut versuchen', false);
+    toast('FIRMS antwortet nicht: ' + e.message, true);
   })
-  .then(function(){ document.getElementById('load').disabled = false; });
+  .then(function(){
+    busy = false;
+    loadBtn.disabled = false; demoBtn.disabled = false;
+    loadBtn.textContent = 'Brände laden';
+  });
 }
 
-function afterLoad(label){
+/* keepState = Auto-Refresh: Filterschwelle und Kartenausschnitt des
+   Nutzers bleiben erhalten, statt bei jeder Aktualisierung zurückzuspringen. */
+function afterLoad(label, keepState){
   if(!ALL.length){
     status('Keine Detektionen im Gebiet', false);
-    SHOWN = []; render(); toast('FIRMS meldet für dieses Gebiet und den Zeitraum keine Hitzeanomalien.');
+    SHOWN = []; render(); drawHist();
+    toast('FIRMS meldet für dieses Gebiet und den Zeitraum keine Hitzeanomalien.');
     return;
   }
-  document.getElementById('thresh').value = 0;
-  status(ALL.length + ' Detektionen · ' + label, true);
-  drawHist(); applyThreshold(); fitToData();
+  if(!keepState) threshEl.value = 0;
+  status(ALL.length.toLocaleString('de-DE') + ' Detektionen · ' + label, true);
+  drawHist(); applyThreshold();
+  if(!keepState) fitToData();
 }
 
 function fitToData(){
@@ -518,23 +608,46 @@ function fitToData(){
 
 /* ------------------------------------------------- Schwelle & Filter */
 var threshEl = document.getElementById('thresh');
-threshEl.addEventListener('input', applyThreshold);
+var threshFrame = null;
+
+/* Beim Ziehen des Reglers feuert 'input' viel häufiger als die Karte neu
+   zeichnen kann — Label sofort, Neuzeichnen gebündelt pro Frame. */
+threshEl.addEventListener('input', function(){
+  updateThreshLabel(currentThreshold());
+  if(threshFrame) return;
+  threshFrame = requestAnimationFrame(function(){
+    threshFrame = null;
+    applyThreshold();
+  });
+});
 
 function currentThreshold(){
   var maxF = ALL.reduce(function(m,d){ return Math.max(m, d.frp); }, 0);
   var v = +threshEl.value / 100;
   return v === 0 ? 0 : Math.round((Math.exp(v * Math.log(1 + maxF)) - 1) * 10) / 10;
 }
+function updateThreshLabel(t){
+  var txt = 'ab ' + t + ' MW';
+  document.getElementById('threshLabel').textContent = txt;
+  threshEl.setAttribute('aria-valuetext', txt);
+}
 function applyThreshold(){
   var t = currentThreshold();
-  document.getElementById('threshLabel').textContent = 'ab ' + t + ' MW';
+  updateThreshLabel(t);
   SHOWN = ALL.filter(function(d){ return d.frp >= t; });
+  var hidden = ALL.length - SHOWN.length;
+  document.getElementById('filteredOut').textContent =
+    hidden ? hidden.toLocaleString('de-DE') + ' von ' + ALL.length.toLocaleString('de-DE') + ' Punkten ausgeblendet.' : '';
+  drawThreshMarker(t);
   render();
 }
 
 /* ------------------------------------------------------------ Render */
+var markers = [];
+
 function render(){
   fireLayer.clearLayers();
+  markers = [];
   var z = map.getZoom();
   var recentCut = Date.now() - 6*3600*1000;
 
@@ -549,14 +662,23 @@ function render(){
       fillColor: frpColor(d.frp),
       fillOpacity: .72
     });
-    m.bindPopup(popupHTML(d, dt), {maxWidth:280});
+    m._frp = d.frp;
+    // Popup erst beim Öffnen bauen — spart bei tausenden Punkten viel Arbeit.
+    m.bindPopup(function(){ return popupHTML(d, dt); }, {maxWidth:280});
     m.on('popupopen', function(e){ wireWeather(e.popup, d); });
+    markers.push(m);
     fireLayer.addLayer(m);
   });
 
   stats(); clusters();
 }
-map.on('zoomend', function(){ if(SHOWN.length) render(); });
+
+/* Beim Zoomen nur die Radien nachziehen, statt alle Marker neu aufzubauen —
+   das hielt vorher ein offenes Popup nicht und ruckelte bei vielen Punkten. */
+map.on('zoomend', function(){
+  var z = map.getZoom();
+  for(var i=0;i<markers.length;i++) markers[i].setRadius(frpRadius(markers[i]._frp, z));
+});
 
 function popupHTML(d, dt){
   return '<div class="pop-title">' + Math.round(d.frp) + ' MW</div>'
@@ -634,36 +756,79 @@ function stats(){
     var t = acqDate(d).getTime();
     if(t > newest){ newest = t; newestRegion = d.region; }
   });
-  document.getElementById('obstime').textContent = newest ? 'zuletzt ' + fmtLocal(new Date(newest), newestRegion) : '';
+  document.getElementById('obstime').textContent =
+    newest ? 'zuletzt ' + fmtLocal(new Date(newest), newestRegion) + ' (' + relTime(newest) + ')' : '';
 }
-document.getElementById('split').addEventListener('click', function(e){
+var splitEl = document.getElementById('split');
+function jumpToRegionBox(box){ goTo(box.getAttribute('data-region') === 'DE' ? 'de' : 'tr'); }
+splitEl.addEventListener('click', function(e){
   var box = e.target.closest('[data-region]'); if(!box) return;
-  goTo(box.getAttribute('data-region') === 'DE' ? 'de' : 'tr');
+  jumpToRegionBox(box);
+});
+splitEl.addEventListener('keydown', function(e){
+  if(e.key !== 'Enter' && e.key !== ' ') return;
+  var box = e.target.closest('[data-region]'); if(!box) return;
+  e.preventDefault(); jumpToRegionBox(box);
 });
 
 /* --------------------------------------------------------- Histogramm */
-function drawHist(){
-  var c = document.getElementById('hist'), ctx = c.getContext('2d');
-  var W = c.width, H = c.height;
+var histCanvas = document.getElementById('hist');
+
+/* Canvas an Anzeigegröße und Pixeldichte anpassen — sonst wird das
+   Histogramm auf Retina-/HiDPI-Displays unscharf skaliert. */
+function sizeHist(){
+  var dpr = window.devicePixelRatio || 1;
+  var rect = histCanvas.getBoundingClientRect();
+  var w = Math.max(1, Math.round(rect.width)), h = 64;
+  if(histCanvas.width === Math.round(w*dpr) && histCanvas.height === Math.round(h*dpr)) return;
+  histCanvas.width = Math.round(w * dpr);
+  histCanvas.height = Math.round(h * dpr);
+  histCanvas.style.height = h + 'px';
+}
+
+function drawHist(){ paintHist(currentThreshold()); }
+function drawThreshMarker(t){ paintHist(t); }
+
+function paintHist(thresh){
+  sizeHist();
+  var ctx = histCanvas.getContext('2d');
+  var dpr = window.devicePixelRatio || 1;
+  var W = histCanvas.width / dpr, H = histCanvas.height / dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0,0,W,H);
   if(!ALL.length) return;
+
   var maxF = ALL.reduce(function(m,d){ return Math.max(m, d.frp); }, 0) || 1;
+  var span = Math.log(1 + maxF);
   var BINS = 40, bins = new Array(BINS).fill(0);
   ALL.forEach(function(d){
-    var p = Math.log(1 + d.frp) / Math.log(1 + maxF);
+    var p = Math.log(1 + d.frp) / span;
     bins[Math.min(BINS-1, Math.floor(p * BINS))]++;
   });
   var peak = Math.max.apply(null, bins) || 1;
   var bw = W / BINS;
+  var cut = thresh > 0 ? (Math.log(1 + thresh) / span) * W : 0;
+
   for(var i=0;i<BINS;i++){
     var h = (bins[i] / peak) * (H - 6);
-    var frpAt = Math.exp((i/BINS) * Math.log(1 + maxF)) - 1;
+    var frpAt = Math.exp((i/BINS) * span) - 1;
     ctx.fillStyle = frpColor(frpAt);
-    ctx.globalAlpha = .85;
-    ctx.fillRect(i*bw + 1, H - h, bw - 2, h);
+    // Ausgefilterter Bereich wird sichtbar abgedunkelt statt nur beschriftet.
+    ctx.globalAlpha = (i + 1) * bw <= cut ? .18 : .85;
+    ctx.fillRect(i*bw + 1, H - h, Math.max(1, bw - 2), h);
   }
   ctx.globalAlpha = 1;
+
+  if(cut > 0){
+    ctx.strokeStyle = '#FFD166';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(Math.round(cut) + .5, 0);
+    ctx.lineTo(Math.round(cut) + .5, H);
+    ctx.stroke();
+  }
 }
+addEventListener('resize', function(){ if(ALL.length) paintHist(currentThreshold()); });
 
 /* ----------------------------------------------------------- Cluster */
 var PROV = [["Adana",37.00,35.32],["Adıyaman",37.76,38.28],["Afyonkarahisar",38.76,30.54],["Ağrı",39.72,43.05],["Aksaray",38.37,34.03],["Amasya",40.65,35.83],["Ankara",39.93,32.86],["Antalya",36.89,30.71],["Ardahan",41.11,42.70],["Artvin",41.18,41.82],["Aydın",37.85,27.84],["Balıkesir",39.65,27.89],["Bartın",41.64,32.34],["Batman",37.88,41.13],["Bayburt",40.26,40.23],["Bilecik",40.14,29.98],["Bingöl",38.88,40.50],["Bitlis",38.40,42.11],["Bolu",40.74,31.61],["Burdur",37.72,30.29],["Bursa",40.19,29.06],["Çanakkale",40.15,26.41],["Çankırı",40.60,33.62],["Çorum",40.55,34.95],["Denizli",37.78,29.09],["Diyarbakır",37.91,40.24],["Düzce",40.84,31.16],["Edirne",41.68,26.56],["Elazığ",38.68,39.22],["Erzincan",39.75,39.49],["Erzurum",39.90,41.27],["Eskişehir",39.78,30.52],["Gaziantep",37.07,37.38],["Giresun",40.91,38.39],["Gümüşhane",40.46,39.48],["Hakkâri",37.57,43.74],["Hatay",36.20,36.16],["Iğdır",39.92,44.04],["Isparta",37.76,30.55],["İstanbul",41.01,28.98],["İzmir",38.42,27.14],["Kahramanmaraş",37.58,36.93],["Karabük",41.20,32.63],["Karaman",37.18,33.22],["Kars",40.60,43.10],["Kastamonu",41.38,33.78],["Kayseri",38.73,35.49],["Kırıkkale",39.85,33.52],["Kırklareli",41.74,27.22],["Kırşehir",39.15,34.16],["Kilis",36.72,37.12],["Kocaeli",40.77,29.95],["Konya",37.87,32.48],["Kütahya",39.42,29.99],["Malatya",38.35,38.31],["Manisa",38.62,27.43],["Mardin",37.31,40.74],["Mersin",36.81,34.64],["Muğla",37.22,28.36],["Muş",38.73,41.49],["Nevşehir",38.62,34.71],["Niğde",37.97,34.68],["Ordu",40.98,37.88],["Osmaniye",37.07,36.25],["Rize",41.02,40.52],["Sakarya",40.78,30.40],["Samsun",41.29,36.33],["Siirt",37.93,41.94],["Sinop",42.03,35.15],["Sivas",39.75,37.02],["Şanlıurfa",37.16,38.80],["Şırnak",37.52,42.46],["Tekirdağ",40.98,27.51],["Tokat",40.31,36.55],["Trabzon",41.00,39.72],["Tunceli",39.11,39.55],["Uşak",38.68,29.41],["Van",38.49,43.38],["Yalova",40.65,29.27],["Yozgat",39.82,34.81],["Zonguldak",41.46,31.79]];
@@ -703,13 +868,35 @@ function clusters(){
   list.forEach(function(c){
     var p = nearestProvince(c.lat, c.lon, c.region);
     var tag = c.region ? '<span style="color:var(--muted);font-family:var(--mono);font-size:10px"> ' + c.region + '</span>' : '';
+    var name = p ? p.name + (p.dist > 25 ? ' (ca. ' + p.dist + ' km)' : '') : c.lat.toFixed(2) + ', ' + c.lon.toFixed(2);
     var li = document.createElement('li');
-    li.innerHTML = '<div class="cl-name">' + (p ? p.name + (p.dist > 25 ? ' (ca. ' + p.dist + ' km)' : '') : c.lat.toFixed(2) + ', ' + c.lon.toFixed(2)) + tag + '</div>'
+    li.setAttribute('role', 'button');
+    li.tabIndex = 0;
+    li.title = 'Auf ' + name + ' zoomen';
+    li.innerHTML = '<div class="cl-name">' + name + tag + '</div>'
       + '<div class="cl-frp">' + Math.round(c.frp) + ' MW</div>'
-      + '<div class="cl-sub">' + c.n + ' ' + (c.n === 1 ? 'Punkt' : 'Punkte') + ' · ' + fmtLocal(new Date(c.newest), c.region) + '</div>';
-    li.onclick = function(){ map.setView([c.lat, c.lon], 11); };
+      + '<div class="cl-sub">' + c.n + ' ' + (c.n === 1 ? 'Punkt' : 'Punkte') + ' · ' + relTime(c.newest) + ' · ' + fmtLocal(new Date(c.newest), c.region) + '</div>';
+    function go(){ map.setView([c.lat, c.lon], 11); highlight(c); }
+    li.onclick = go;
+    li.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); go(); } };
+    li.onmouseenter = function(){ highlight(c); };
+    li.onmouseleave = clearHighlight;
+    li.onfocus = function(){ highlight(c); };
+    li.onblur = clearHighlight;
     el.appendChild(li);
   });
+}
+
+/* Ring auf der Karte, damit klar ist, welcher Listeneintrag wo liegt. */
+var highlightRing = null;
+function highlight(c){
+  clearHighlight();
+  highlightRing = L.circleMarker([c.lat, c.lon], {
+    radius: 22, color: '#FFD166', weight: 2, opacity: .9, fill: false, interactive: false
+  }).addTo(map);
+}
+function clearHighlight(){
+  if(highlightRing){ map.removeLayer(highlightRing); highlightRing = null; }
 }
 
 /* ------------------------------------------------------------ Export */
@@ -738,7 +925,7 @@ document.getElementById('expCsv').onclick = function(){
 };
 
 /* ----------------------------------------------------- Demo & Refresh */
-document.getElementById('load').onclick = load;
+document.getElementById('load').onclick = function(){ load(); };
 document.getElementById('demo').onclick = function(){
   var seeds = [
     [36.62,29.12,18],[36.85,30.20,14],[37.05,28.32,12],[38.30,26.95,10],
@@ -767,15 +954,59 @@ document.getElementById('demo').onclick = function(){
   toast('Demo-Modus: synthetische Punkte zum Testen der Oberfläche.');
 };
 
-document.getElementById('autorefresh').onchange = function(e){
+var autoEl = document.getElementById('autorefresh');
+autoEl.onchange = function(){
   clearInterval(timer);
-  if(e.target.checked){
-    timer = setInterval(load, 600000);
+  if(autoEl.checked){
+    // load(true) behält Filterschwelle und Kartenausschnitt bei.
+    timer = setInterval(function(){ load(true); }, 600000);
     toast('Automatische Aktualisierung alle 10 Minuten aktiv.');
   }
+  save();
 };
 
-status('Bereit — Brände laden oder Demo starten', false);
+/* ------------------------------------------------- Einstellungen merken */
+var STORE = 'ates.settings.v1';
+var fields = ['source','days','area'];
+
+function save(){
+  try{
+    var s = {basemap: document.getElementById('bm-dark').getAttribute('aria-pressed') === 'true' ? 'dark' : 'sat',
+             autorefresh: autoEl.checked};
+    fields.forEach(function(id){ s[id] = document.getElementById(id).value; });
+    localStorage.setItem(STORE, JSON.stringify(s));
+  }catch(e){ /* privater Modus o. Ä. — Einstellungen sind dann nur flüchtig */ }
+}
+
+function restore(){
+  var s;
+  try{ s = JSON.parse(localStorage.getItem(STORE) || 'null'); }catch(e){ return; }
+  if(!s) return;
+  fields.forEach(function(id){
+    var el = document.getElementById(id);
+    if(s[id] && Array.prototype.some.call(el.options, function(o){ return o.value === s[id]; })) el.value = s[id];
+  });
+  if(s.basemap === 'sat') swapBase(false);
+  if(s.autorefresh){ autoEl.checked = true; autoEl.onchange(); }
+}
+fields.forEach(function(id){ document.getElementById(id).addEventListener('change', save); });
+restore();
+
+/* --------------------------------------------------------- Tastatur */
+document.addEventListener('keydown', function(e){
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  var t = e.target;
+  if(t && (t.tagName === 'INPUT' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+  if(e.key === 'r' || e.key === 'R'){ e.preventDefault(); load(); }
+});
+
+/* Zeitangaben („vor 12 min") altern lassen, ohne neu zu laden. */
+setInterval(function(){
+  if(SHOWN.length) stats();
+  if(lastLoad) document.body.classList.toggle('stale', Date.now() - lastLoad > 30*60000);
+}, 60000);
+
+status('Bereit — „Brände laden" (Taste R) oder Demo starten', false);
 })();
 </script>
 </body>
